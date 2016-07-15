@@ -154,9 +154,12 @@
 				float scaleFactor = 1 / _Levels;
 				float toonShadow = floor(shadowLum * _Levels) * scaleFactor;
 
-				//Composite the final color
-				float4 finalColor = lerp(lerp(saturate(HSB2RGB(baseColor)), saturate(HSB2RGB(baseColor)) + _LightColor0 * 0.25 + float4(i.vertexlighting, 1), shadowLum), _EmissionColor, tex2D(_EmissiveMap, i.emissionuv).r);
-				finalColor.w = toonShadow;
+				// Read the emissive value
+				float emissiveValue = tex2D(_EmissiveMap, i.emissionuv).r;
+
+				// Composite the final color
+				float4 finalColor = lerp(lerp(saturate(HSB2RGB(baseColor)), saturate(HSB2RGB(baseColor)) + _LightColor0 * 0.25 + float4(i.vertexlighting, 1), shadowLum), _EmissionColor, emissiveValue);
+				finalColor.w = lerp(toonShadow, 1, emissiveValue);
 
 				return finalColor;
 			}
