@@ -4,7 +4,7 @@
 [RequireComponent(typeof(Camera))]
 public class Tonemapper : MonoBehaviour {
 
-    enum TonemappingMethod { LINEAR, REINHARD, HPDUIKER, HEJL_DAWSON, HABLE, ACES};
+    enum TonemappingMethod { PHOTOGRAPHIC, REINHARD, HPDUIKER, HEJL_DAWSON, HABLE, ACES};
 
     [SerializeField]
     private TonemappingMethod method;

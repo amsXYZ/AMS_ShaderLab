@@ -9,7 +9,7 @@
 		// No culling or depth
 		Cull Off ZWrite Off ZTest Always
 
-		//LINEAR TONEMAPPING
+		//PHOTOGRAPHIC TONEMAPPING
 		Pass
 		{
 			CGPROGRAM
@@ -25,8 +25,9 @@
 			{
 				float4 col = tex2D(_MainTex, i.uv);
 				col.rgb *= _Exposure;
-				float3 retColor = pow(col, 1 / 2.2);
-				return float4(retColor, 1);
+				//gamma correction
+				//float3 retColor = pow(col, 1 / 2.2);
+				return 1 - exp2(-col);
 			}
 			ENDCG
 		}
@@ -48,8 +49,9 @@
 				float4 col = tex2D(_MainTex, i.uv);
 				col.rgb *= _Exposure;
 				col = col / (1 + col);
-				float3 retColor = pow(col, 1 / 2.2);
-				return float4(retColor, 1);
+				//gamma correction
+				//float3 retColor = pow(col, 1 / 2.2);
+				return col;
 			}
 			ENDCG
 		}
@@ -112,7 +114,7 @@
 				col.rgb *= _Exposure;
 				float3 x = max(0, col - 0.004);
 				float3 retColor = (x*(6.2*x + .5)) / (x*(6.2*x + 1.7) + 0.06);
-				return float4(retColor, 1);
+				return float4(retColor*retColor, 1);
 			}
 			ENDCG
 		}
@@ -154,8 +156,9 @@
 				float3 whiteScale = 1.0f / HableTonemap(W);
 				float3 color = curr*whiteScale;
 
-				float3 retColor = pow(color, 1 / 2.2);
-				return float4(retColor, 1);
+				//gamma correction
+				//float3 retColor = pow(color, 1 / 2.2);
+				return float4(color, 1);
 			}
 			ENDCG
 		}
@@ -183,8 +186,9 @@
 				float d = 0.59;
 				float e = 0.14;
 
-				float4 retColor = pow(col, 1 / 2.2);
-				return saturate((retColor * (a * retColor + b)) / (retColor * (c * retColor + d) + e));
+				//gamma correction
+				//float4 retColor = pow(col, 1 / 2.2);
+				return saturate((col * (a * col + b)) / (col * (c * col + d) + e));
 			}
 			ENDCG
 		}
