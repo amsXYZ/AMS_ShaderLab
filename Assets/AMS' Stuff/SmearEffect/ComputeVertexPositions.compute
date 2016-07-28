@@ -1,21 +1,18 @@
-﻿// Each #kernel tells which function to compile; you can have many kernels
-#pragma kernel CSMain
-
-// Create a RenderTexture with enableRandomWrite flag and set it
-// with cs.SetTexture
-//RWTexture2D<float4> Result;
+﻿#pragma kernel CSMain
 
 RWStructuredBuffer<float3> vertexPositions;
-float3 position;
+float3 Position;
+float4 MV0;
+float4 MV1;
+float4 MV2;
+float4 MV3;
 
 [numthreads(1,1,1)]
 void CSMain (uint3 dispatchID : SV_DispatchThreadID)
 {
-	// TODO: insert actual code here!
-
 	int id = dispatchID.x + dispatchID.y;
+	float4x4 modelViewMatrix = {MV0,MV1,MV2,MV3};
 
-	vertexPositions[id] = position + vertexPositions[id];
+	vertexPositions[id] = Position + mul(modelViewMatrix, float4(vertexPositions[id],1));
 
-	//Result[id.xy] = float4(id.x & id.y, (id.x & 15)/15.0, (id.y & 15)/15.0, 0.0);
 }

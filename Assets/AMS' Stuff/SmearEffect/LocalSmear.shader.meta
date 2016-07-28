@@ -1,10 +1,9 @@
 fileFormatVersion: 2
-guid: d9132fea56cd536428f31489838a5ca4
-timeCreated: 1469552149
+guid: 32e436a90b0f80449a16ec1320bd2cab
+timeCreated: 1469551810
 licenseType: Free
 ShaderImporter:
-  defaultTextures:
-  - _SmearTexture: {fileID: 2800000, guid: 28c7aad1372ff114b90d330f8a2dd938, type: 3}
+  defaultTextures: []
   userData: 
   assetBundleName: 
   assetBundleVariant: 
