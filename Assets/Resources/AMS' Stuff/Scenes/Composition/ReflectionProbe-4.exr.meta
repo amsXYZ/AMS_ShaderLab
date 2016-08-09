@@ -1,7 +1,7 @@
 fileFormatVersion: 2
-guid: e04faab52f51e1142b838c6d791a1dda
-timeCreated: 1450368660
-licenseType: Store
+guid: 398440c77f0c65345822d80fe91c86f0
+timeCreated: 1470759310
+licenseType: Free
 TextureImporter:
   fileIDToRecycleName:
     8900000: generatedCubemap
@@ -47,9 +47,11 @@ TextureImporter:
   spriteBorder: {x: 0, y: 0, z: 0, w: 0}
   spritePixelsToUnits: 100
   alphaIsTransparency: 0
+  spriteTessellationDetail: -1
   textureType: 3
   buildTargetSettings: []
   spriteSheet:
+    serializedVersion: 2
     sprites: []
     outline: []
   spritePackingTag: 
