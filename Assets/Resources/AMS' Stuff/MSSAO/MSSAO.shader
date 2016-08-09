@@ -236,7 +236,7 @@
 					finalPos = pos[depth1Index];
 				}
 
-				finalPos += ReconstructViewPos(float2(0,0), _ScreenParams.z, p11_22, p13_31);
+				finalPos += ReconstructViewPos(float2(1,1), _ScreenParams.z, p11_22, p13_31);
 
 				return float4(finalPos, 1);
 			}
@@ -262,36 +262,12 @@
 
 			uniform float _FOV;
 			uniform float _maxDist;
-			uniform int _maxKernelSize;
+			uniform float _maxKernelSize;
 			uniform float _r;
+			uniform float _Radius;
 
-			sampler2D _CameraDepthTexture;
-			sampler2D _CameraGBufferTexture2;
-
-			uniform float _PoissonDisks[32];
-
-			// Boundary check for depth sampler
-			// (returns a very large value if it lies out of bounds)
-			float CheckBounds(float2 uv, float d)
-			{
-				float ob = any(uv < 0) + any(uv > 1);
-				#if defined(UNITY_REVERSED_Z)
-					ob += (d <= 0.00001);
-				#else
-					ob += (d >= 0.99999);
-				#endif
-				return ob * 1e8;
-			}
-
-			void SampleDepthNormal(float2 uv, out float3 normal, out float depth)
-			{
-				float d = SAMPLE_DEPTH_TEXTURE(_CameraDepthTexture, uv);
-				depth = LinearEyeDepth(d) + CheckBounds(uv, d);
-
-				float3 norm = tex2D(_CameraGBufferTexture2, uv).xyz;
-				norm = norm * 2 - any(norm); // gets (0,0,0) when norm == 0
-				normal = mul((float3x3)unity_WorldToCamera, norm);
-			}
+			sampler2D _normTex;
+			sampler2D _posTex;
 
 			// Reconstruct view-space position from UV and depth.
 			// p11_22 = (unity_CameraProjection._11, unity_CameraProjection._22)
@@ -301,18 +277,18 @@
 				return float3((uv * 2 - 1 - p13_31) / p11_22, 1) * depth;
 			}
 
-			float ComputeOcclusion(float2 sampleUV, float3 centerPos, float3 centerNorm) {
-				float3 sampleNorm;
-				float sampleDepth;
-				SampleDepthNormal(sampleUV, sampleNorm, sampleDepth);
-
+			float3 SamplePosition(sampler2D posTex, float2 sampleUV) {
 				// Parameters used in coordinate conversion
 				float3x3 proj = (float3x3)unity_CameraProjection;
 				float2 p11_22 = float2(unity_CameraProjection._11, unity_CameraProjection._22);
 				float2 p13_31 = float2(unity_CameraProjection._13, unity_CameraProjection._23);
 
-				// Reconstruct the view-space position.
-				float3 samplePos = ReconstructViewPos(sampleUV, sampleDepth, p11_22, p13_31);
+				return tex2D(posTex, sampleUV) - ReconstructViewPos(float2(0, 0), _ScreenParams.z, p11_22, p13_31);
+			}
+
+			float ComputeOcclusion(float2 sampleUV, float3 centerPos, float3 centerNorm) {
+				float3 sampleNorm = tex2D(_normTex, sampleUV);
+				float3 samplePos = SamplePosition(_posTex, sampleUV);
 
 				float d = distance(centerPos, samplePos);
 				float t = 1 - min(1, (d * d) / (_maxDist * _maxDist));
@@ -325,18 +301,9 @@
 
 			float4 frag(v2f_img i) : COLOR
 			{
-				// Parameters used in coordinate conversion
-				float3x3 proj = (float3x3)unity_CameraProjection;
-				float2 p11_22 = float2(unity_CameraProjection._11, unity_CameraProjection._22);
-				float2 p13_31 = float2(unity_CameraProjection._13, unity_CameraProjection._23);
-
 				// Pixel's viewspace normal and depth
-				float3 centerNorm;
-				float centerDepth;
-				SampleDepthNormal(i.uv, centerNorm, centerDepth);
-
-				// Reconstruct the view-space position.
-				float3 centerPos = ReconstructViewPos(i.uv, centerDepth, p11_22, p13_31);
+				float3 centerNorm = tex2D(_normTex, i.uv);
+				float3 centerPos = SamplePosition(_posTex, i.uv);
 
 				float AONear = 0;
 				float AOSamples = 0.0001;
@@ -348,15 +315,12 @@
 				{
 					for (float q = -5; q <= 5; q += 2)
 					{
-						AONear += ComputeOcclusion(i.uv + float2(floor(1.0001 * q), floor(1.0001 * k)) * _MainTex_TexelSize, centerPos, centerNorm);
+						AONear += ComputeOcclusion(i.uv + float2(floor(1.0001 * q), floor(1.0001 * k)) * _MainTex_TexelSize * _Radius, centerPos, centerNorm);
 						AOSamples++;
 					}
 				}
 
-				return float4(centerPos, 1);
-
-				return 1 - AONear / AOSamples;
-				return float4(AONear / AOSamples, AONear, AOSamples, 0);
+				return AONear / AOSamples;
 			}
 			ENDCG
 		}
@@ -384,34 +348,12 @@
 			uniform float _maxDist;
 			uniform int _maxKernelSize;
 			uniform float _r;
+			uniform float _Radius;
 
-			sampler2D _CameraDepthTexture;
-			sampler2D _CameraGBufferTexture2;
-
-			uniform float _PoissonDisks[32];
-
-			// Boundary check for depth sampler
-			// (returns a very large value if it lies out of bounds)
-			float CheckBounds(float2 uv, float d)
-			{
-				float ob = any(uv < 0) + any(uv > 1);
-				#if defined(UNITY_REVERSED_Z)
-					ob += (d <= 0.00001);
-				#else
-					ob += (d >= 0.99999);
-				#endif
-				return ob * 1e8;
-			}
-
-			void SampleDepthNormal(float2 uv, out float3 normal, out float depth)
-			{
-				float d = SAMPLE_DEPTH_TEXTURE(_CameraDepthTexture, uv);
-				depth = LinearEyeDepth(d) + CheckBounds(uv, d);
-
-				float3 norm = tex2D(_CameraGBufferTexture2, uv).xyz;
-				norm = norm * 2 - any(norm); // gets (0,0,0) when norm == 0
-				normal = mul((float3x3)unity_WorldToCamera, norm);
-			}
+			sampler2D _normTex;
+			sampler2D _posTex;
+			sampler2D _lowResNormTex;
+			sampler2D _lowResPosTex;
 
 			// Reconstruct view-space position from UV and depth.
 			// p11_22 = (unity_CameraProjection._11, unity_CameraProjection._22)
@@ -421,18 +363,18 @@
 				return float3((uv * 2 - 1 - p13_31) / p11_22, 1) * depth;
 			}
 
-			float ComputeOcclusion(float2 sampleUV, float3 centerPos, float3 centerNorm) {
-				float3 sampleNorm;
-				float sampleDepth;
-				SampleDepthNormal(sampleUV, sampleNorm, sampleDepth);
-
+			float3 SamplePosition(sampler2D posTex, float2 sampleUV) {
 				// Parameters used in coordinate conversion
 				float3x3 proj = (float3x3)unity_CameraProjection;
 				float2 p11_22 = float2(unity_CameraProjection._11, unity_CameraProjection._22);
 				float2 p13_31 = float2(unity_CameraProjection._13, unity_CameraProjection._23);
 
-				// Reconstruct the view-space position.
-				float3 samplePos = ReconstructViewPos(sampleUV, sampleDepth, p11_22, p13_31);
+				return tex2D(posTex, sampleUV) - ReconstructViewPos(float2(1, 1), _ScreenParams.z, p11_22, p13_31);
+			}
+
+			float ComputeOcclusion(float2 sampleUV, float3 centerPos, float3 centerNorm) {
+				float3 sampleNorm = tex2D(_normTex, sampleUV);
+				float3 samplePos = SamplePosition(_posTex, sampleUV);
 
 				float d = distance(centerPos, samplePos);
 				float t = 1 - min(1, (d * d) / (_maxDist * _maxDist));
@@ -443,69 +385,58 @@
 				return t * cosTheta;
 			}
 
-			float3 Upsample(sampler2D downsampledTexture, float4 texelSize, float2 sampleUV)
+			float3 Upsample(sampler2D downsampledTexture, float4 texelSize, float2 sampleUV, float3 centerNorm, float centerDepth)
 			{
 				float2 lowResSamples[4];
 
-				float2 realPixels = sampleUV * texelSize.zw;
-
-				lowResSamples[0] = (floor((sampleUV * texelSize.zw + float2(-1.0, 1.0)) / 2.0) + float2(0.5, 0.5)) * texelSize.xy;
-				lowResSamples[1] = (floor((sampleUV * texelSize.zw + float2(1.0, 1.0)) / 2.0) + float2(0.5, 0.5)) * texelSize.xy;
-				lowResSamples[2] = (floor((sampleUV * texelSize.zw + float2(-1.0, -1.0)) / 2.0) + float2(0.5, 0.5)) * texelSize.xy;
-				lowResSamples[3] = (floor((sampleUV * texelSize.zw + float2(1.0, -1.0)) / 2.0) + float2(0.5, 0.5)) * texelSize.xy;
+				lowResSamples[0] = sampleUV + float2(-1.0, 1.0) * texelSize.xy;
+				lowResSamples[1] = sampleUV + float2(1.0, 1.0) * texelSize.xy;
+				lowResSamples[2] = sampleUV + float2(-1.0, -1.0) * texelSize.xy;
+				lowResSamples[3] = sampleUV + float2(1.0, -1.0) * texelSize.xy;
 
 				float3 lowResAO[4];
 				float3 lowResNorm[4];
 				float lowResDepth[4];
 
-				//I NEED TO HAVE THE LOW RES TEXTURES
-				/*for (int i = 0; i < 4; ++i)
+				for (int i = 0; i < 4; ++i)
 				{
-					loResNorm[i] = texture2DRect(loResNormTex, loResCoord[i]).xyz;
-					loResDepth[i] = texture2DRect(loResPosTex, loResCoord[i]).z;
-					loResAO[i] = texture2DRect(loResAOTex, loResCoord[i]).xyz;
+					lowResNorm[i] = tex2D(_lowResNormTex, lowResSamples[i]).xyz;
+					lowResDepth[i] = SamplePosition(_lowResPosTex, lowResSamples[i]).z;
+					lowResAO[i] = tex2D(downsampledTexture, lowResSamples[i]).xyz;
 				}
+
 				float normWeight[4];
 				for (int i = 0; i < 4; ++i)
 				{
-					normWeight[i] = (dot(loResNorm[i], n) + 1.1) / 2.1;
+					normWeight[i] = (dot(lowResNorm[i], centerNorm) + 1.1) / 2.1;
 					normWeight[i] = pow(normWeight[i], 8.0);
 				}
+
 				float depthWeight[4];
 				for (int i = 0; i < 4; ++i)
 				{
-					depthWeight[i] = 1.0 / (1.0 + abs(p.z - loResDepth[i]) * 0.2);
+					depthWeight[i] = 1.0 / (1.0 + abs(centerDepth - lowResDepth[i]) * 0.2);
 					depthWeight[i] = pow(depthWeight[i], 16.0);
 				}
+
 				float totalWeight = 0.0;
-				vec3 combinedAO = vec3(0.0);
+				float3 combinedAO = float3(0, 0, 0);
 				for (int i = 0; i < 4; ++i)
 				{
 					float weight = normWeight[i] * depthWeight[i] * (9.0 / 16.0) /
-						(abs((gl_FragCoord.x - loResCoord[i].x * 2.0) * (gl_FragCoord.y - loResCoord[i].y * 2.0)) * 4.0);
+						(abs((sampleUV.x - lowResSamples[i].x * 2.0) * (sampleUV.y - lowResSamples[i].y * 2.0)) * 4.0);
 					totalWeight += weight;
-					combinedAO += loResAO[i] * weight;
+					combinedAO += lowResAO[i] * weight;
 				}
 				combinedAO /= totalWeight;
-				return combinedAO;*/
-
-				return 1;
+				return combinedAO;
 			}
 
 			float4 frag(v2f_img i) : COLOR
 			{
-				// Parameters used in coordinate conversion
-				float3x3 proj = (float3x3)unity_CameraProjection;
-				float2 p11_22 = float2(unity_CameraProjection._11, unity_CameraProjection._22);
-				float2 p13_31 = float2(unity_CameraProjection._13, unity_CameraProjection._23);
-
 				// Pixel's viewspace normal and depth
-				float3 centerNorm;
-				float centerDepth;
-				SampleDepthNormal(i.uv, centerNorm, centerDepth);
-
-				// Reconstruct the view-space position.
-				float3 centerPos = ReconstructViewPos(i.uv, centerDepth, p11_22, p13_31);
+				float3 centerNorm = tex2D(_normTex, i.uv);
+				float3 centerPos = SamplePosition(_posTex, i.uv);
 
 				float AONear = 0;
 				float AOSamples = 0.0001;
@@ -517,17 +448,13 @@
 				{
 					for (float q = -5; q <= 5; q += 2)
 					{
-						AONear += ComputeOcclusion(i.uv + float2(floor(1.0001 * q), floor(1.0001 * k)) * _MainTex_TexelSize, centerPos, centerNorm);
+						AONear += ComputeOcclusion(i.uv + float2(floor(1.0001 * q), floor(1.0001 * k)) * _MainTex_TexelSize * _Radius, centerPos, centerNorm);
 						AOSamples++;
 					}
 				}
-
-				return float4(centerPos, 1);
-
-				return tex2D(_AOFar, i.uv) * (1 - AONear / AOSamples);
-
-				float3 upsample = Upsample(_AOFar, _AOFar_TexelSize, i.uv);
-				return float4(max(upsample.x, AONear / AOSamples), upsample.y + AONear, upsample.z + AOSamples, 0.0);
+				
+				float3 upsample = Upsample(_AOFar, _AOFar_TexelSize, i.uv, centerNorm, centerPos.z);
+				return max(upsample.x, AONear / AOSamples);
 			}
 			ENDCG
 		}
@@ -549,39 +476,20 @@
 			uniform sampler2D _MainTex;
 			uniform float4 _MainTex_TexelSize;
 			uniform sampler2D _AOFar;
+			uniform float4 _AOFar_TexelSize;
 
 			uniform float _FOV;
 			uniform float _maxDist;
 			uniform int _maxKernelSize;
 			uniform float _r;
+			uniform float _Radius;
 
-			sampler2D _CameraDepthTexture;
-			sampler2D _CameraGBufferTexture2;
+			sampler2D _normTex;
+			sampler2D _posTex;
+			sampler2D _lowResNormTex;
+			sampler2D _lowResPosTex;
 
 			uniform float _PoissonDisks[32];
-
-			// Boundary check for depth sampler
-			// (returns a very large value if it lies out of bounds)
-			float CheckBounds(float2 uv, float d)
-			{
-				float ob = any(uv < 0) + any(uv > 1);
-				#if defined(UNITY_REVERSED_Z)
-					ob += (d <= 0.00001);
-				#else
-					ob += (d >= 0.99999);
-				#endif
-				return ob * 1e8;
-			}
-
-			void SampleDepthNormal(float2 uv, out float3 normal, out float depth)
-			{
-				float d = SAMPLE_DEPTH_TEXTURE(_CameraDepthTexture, uv);
-				depth = LinearEyeDepth(d) + CheckBounds(uv, d);
-
-				float3 norm = tex2D(_CameraGBufferTexture2, uv).xyz;
-				norm = norm * 2 - any(norm); // gets (0,0,0) when norm == 0
-				normal = mul((float3x3)unity_WorldToCamera, norm);
-			}
 
 			// Reconstruct view-space position from UV and depth.
 			// p11_22 = (unity_CameraProjection._11, unity_CameraProjection._22)
@@ -591,18 +499,18 @@
 				return float3((uv * 2 - 1 - p13_31) / p11_22, 1) * depth;
 			}
 
-			float ComputeOcclusion(float2 sampleUV, float3 centerPos, float3 centerNorm) {
-				float3 sampleNorm;
-				float sampleDepth;
-				SampleDepthNormal(sampleUV, sampleNorm, sampleDepth);
-
+			float3 SamplePosition(sampler2D posTex, float2 sampleUV) {
 				// Parameters used in coordinate conversion
 				float3x3 proj = (float3x3)unity_CameraProjection;
 				float2 p11_22 = float2(unity_CameraProjection._11, unity_CameraProjection._22);
 				float2 p13_31 = float2(unity_CameraProjection._13, unity_CameraProjection._23);
 
-				// Reconstruct the view-space position.
-				float3 samplePos = ReconstructViewPos(sampleUV, sampleDepth, p11_22, p13_31);
+				return tex2D(posTex, sampleUV) - ReconstructViewPos(float2(1, 1), _ScreenParams.z, p11_22, p13_31);
+			}
+
+			float ComputeOcclusion(float2 sampleUV, float3 centerPos, float3 centerNorm) {
+				float3 sampleNorm = tex2D(_normTex, sampleUV);
+				float3 samplePos = SamplePosition(_posTex, sampleUV);
 
 				float d = distance(centerPos, samplePos);
 				float t = 1 - min(1, (d * d) / (_maxDist * _maxDist));
@@ -613,20 +521,58 @@
 				return t * cosTheta;
 			}
 
+			float3 Upsample(sampler2D downsampledTexture, float4 texelSize, float2 sampleUV, float3 centerNorm, float centerDepth)
+			{
+				float2 lowResSamples[4];
+
+				lowResSamples[0] = sampleUV + float2(-1.0, 1.0) * texelSize.xy;
+				lowResSamples[1] = sampleUV + float2(1.0, 1.0) * texelSize.xy;
+				lowResSamples[2] = sampleUV + float2(-1.0, -1.0) * texelSize.xy;
+				lowResSamples[3] = sampleUV + float2(1.0, -1.0) * texelSize.xy;
+
+				float3 lowResAO[4];
+				float3 lowResNorm[4];
+				float lowResDepth[4];
+
+				for (int i = 0; i < 4; ++i)
+				{
+					lowResNorm[i] = tex2D(_lowResNormTex, lowResSamples[i]).xyz;
+					lowResDepth[i] = SamplePosition(_lowResPosTex, lowResSamples[i]).z;
+					lowResAO[i] = tex2D(downsampledTexture, lowResSamples[i]).xyz;
+				}
+
+				float normWeight[4];
+				for (int i = 0; i < 4; ++i)
+				{
+					normWeight[i] = (dot(lowResNorm[i], centerNorm) + 1.1) / 2.1;
+					normWeight[i] = pow(normWeight[i], 8.0);
+				}
+
+				float depthWeight[4];
+				for (int i = 0; i < 4; ++i)
+				{
+					depthWeight[i] = 1.0 / (1.0 + abs(centerDepth - lowResDepth[i]) * 0.2);
+					depthWeight[i] = pow(depthWeight[i], 16.0);
+				}
+
+				float totalWeight = 0.0;
+				float3 combinedAO = float3(0, 0, 0);
+				for (int i = 0; i < 4; ++i)
+				{
+					float weight = normWeight[i] * depthWeight[i] * (9.0 / 16.0) /
+						(abs((sampleUV.x - lowResSamples[i].x * 2.0) * (sampleUV.y - lowResSamples[i].y * 2.0)) * 4.0);
+					totalWeight += weight;
+					combinedAO += lowResAO[i] * weight;
+				}
+				combinedAO /= totalWeight;
+				return combinedAO;
+			}
+
 			float4 frag(v2f_img i) : COLOR
 			{
-				// Parameters used in coordinate conversion
-				float3x3 proj = (float3x3)unity_CameraProjection;
-				float2 p11_22 = float2(unity_CameraProjection._11, unity_CameraProjection._22);
-				float2 p13_31 = float2(unity_CameraProjection._13, unity_CameraProjection._23);
-
 				// Pixel's viewspace normal and depth
-				float3 centerNorm;
-				float centerDepth;
-				SampleDepthNormal(i.uv, centerNorm, centerDepth);
-
-				// Reconstruct the view-space position.
-				float3 centerPos = ReconstructViewPos(i.uv, centerDepth, p11_22, p13_31);
+				float3 centerNorm = tex2D(_normTex, i.uv);
+				float3 centerPos = SamplePosition(_posTex, i.uv);
 
 				float AONear = 0;
 				float AOSamples = 0;
@@ -634,21 +580,20 @@
 				float rangeMax = min(_r / abs(centerPos.z), _maxKernelSize);
 
 				//Adjust to rangeMax
-				for (int x = 0; x < 32; x += 2)
+				for (float x = 0; x < 32; x += 2)
 				{
-					float2 sampleUV = i.uv + float2(_PoissonDisks[x], _PoissonDisks[x + 1]) * _maxKernelSize * _MainTex_TexelSize.xy;
+					float2 sampleUV = i.uv + float2(_PoissonDisks[x], _PoissonDisks[x + 1]) * _maxKernelSize * _MainTex_TexelSize.xy * _Radius;
 					AONear += ComputeOcclusion(sampleUV, centerPos, centerNorm);
 					AOSamples++;
 				}
 
-				return float4(centerPos, 1);
+				float3 upsample = Upsample(_AOFar, _AOFar_TexelSize, i.uv, centerNorm, centerPos.z);
+				float aoMax = max(upsample.x, AONear / AOSamples);
+				float aoAverage = (upsample.y + AONear) / (upsample.z + AOSamples);
 
-				return tex2D(_AOFar, i.uv) * (1 - AONear / AOSamples);
+				float currentFrameAO = (1.0 - aoMax) * (1.0 - aoAverage);
 
-				if (floor(i.uv.x * 200) % 2 == 0)
-					return tex2D(_MainTex, i.uv) * (1 - AONear / AOSamples);
-				else
-					return tex2D(_MainTex, i.uv);
+				return currentFrameAO;
 			}
 			ENDCG
 		}
@@ -671,11 +616,22 @@
 
 			uniform sampler2D _AOFar;
 
+			uniform int _singleAO;
+			uniform int _Debug;
+			uniform float _Intensity;
+
 			float4 frag(v2f_img i) : COLOR
 			{
-				float4 color = tex2D(_MainTex, i.uv) * tex2D(_AOFar, i.uv);
+				float4 ao;
+				if (_singleAO) {
+					ao = 1 - tex2D(_AOFar, i.uv).x;
+				}
+				else ao = tex2D(_AOFar, i.uv).x;
 
-				return color;
+				float4 color = tex2D(_MainTex, i.uv);
+				if (_Debug) color = float4(1, 1, 1, 1);
+				
+				return color * pow(ao, _Intensity);
 			}
 				ENDCG
 		}
