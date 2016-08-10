@@ -34,6 +34,11 @@
 			{
 				half4 color = tex2D(_MainTex, i.uv) - _BloomThreshold;
 
+				if (color.x < 0) color.x = 0;
+				if (color.y < 0) color.y = 0;
+				if (color.z < 0) color.z = 0;
+				color.w = 1;
+
 				return color;
 			}
 			ENDCG

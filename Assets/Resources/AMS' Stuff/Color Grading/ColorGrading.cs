@@ -80,7 +80,7 @@ public class ColorGrading : MonoBehaviour {
                 for (int k = 0; k < dim; k++)
                     newC[i + (j * dim) + (k * dim * dim)] = new Color((float)i * oneOverDim, Mathf.Abs((float)k * oneOverDim), (float)j * oneOverDim, 1f);
 
-        Texture2D tex2D = new Texture2D(dim * dim, dim, TextureFormat.RGB24, false, true)
+        Texture2D tex2D = new Texture2D(dim * dim, dim, TextureFormat.RGBAFloat, false, true)
         {
             name = "Identity LUT",
             filterMode = FilterMode.Bilinear,

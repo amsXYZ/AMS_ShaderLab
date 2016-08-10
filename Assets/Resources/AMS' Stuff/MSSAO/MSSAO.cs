@@ -19,6 +19,7 @@ namespace UnityStandardAssets.ImageEffects
         public bool debug = false;
 
         private Material material;
+        private Material materialBlur;
 
         //Creates a private material used to the effect
         void Awake()
@@ -57,7 +58,7 @@ namespace UnityStandardAssets.ImageEffects
             {
                 int rtW = source.width / (int)Mathf.Pow(2, i);
                 int rtH = source.height / (int)Mathf.Pow(2, i);
-                RenderTexture bufferAO = RenderTexture.GetTemporary(rtW, rtH, 0, RenderTextureFormat.RFloat, RenderTextureReadWrite.Linear);
+                RenderTexture bufferAO = RenderTexture.GetTemporary(rtW, rtH, 1, RenderTextureFormat.ARGBFloat, RenderTextureReadWrite.Linear);
 
                 if (!material) material = new Material(Shader.Find("Hidden/MSSAO"));
 
@@ -79,6 +80,19 @@ namespace UnityStandardAssets.ImageEffects
                     material.SetTexture("_lowResNormTex", normalTextures[i+1]);
                     material.SetTexture("_lowResPosTex", posTextures[i+1]);
 
+                    //Blur the AO Texture
+                    if (!materialBlur) materialBlur = new Material(Shader.Find("Hidden/LowPassFilterAO"));
+                    materialBlur.SetTexture("_AOTexture", aoTextures[i + 1]);
+                    materialBlur.SetTexture("_NormalTexture", normalTextures[i + 1]);
+                    materialBlur.SetTexture("_PosTexture", posTextures[i + 1]);
+
+                    RenderTexture bufferAOBlur = RenderTexture.GetTemporary(rtW/2, rtH/2, 0, RenderTextureFormat.ARGBFloat, RenderTextureReadWrite.Linear);
+                    Graphics.Blit(source, bufferAOBlur, materialBlur, 0);
+                    aoTextures[i+1] = bufferAOBlur;
+                    RenderTexture.ReleaseTemporary(bufferAOBlur);
+
+                    material.SetTexture("_AOFar", aoTextures[i+1]);
+
                     if (i == 0)
                     {
                         float[] poissonDisks = {-0.6116678f,  0.04548655f, -0.26605980f, -0.6445347f,
@@ -96,13 +110,12 @@ namespace UnityStandardAssets.ImageEffects
                     }
                     else Graphics.Blit(source, bufferAO, material, 3);
                 }
-                
 
                 aoTextures[i] = bufferAO;
                 RenderTexture.ReleaseTemporary(bufferAO);
-
-                material.SetTexture("_AOFar", aoTextures[i]);
             }
+
+            material.SetTexture("_AOFinal", aoTextures[0]);
 
             if (levels == 1) material.SetInt("_singleAO", 1);
             else material.SetInt("_singleAO", 0);

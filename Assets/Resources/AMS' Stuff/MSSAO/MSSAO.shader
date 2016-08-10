@@ -320,7 +320,7 @@
 					}
 				}
 
-				return AONear / AOSamples;
+				return float4(AONear / AOSamples, AONear, AOSamples, 1);
 			}
 			ENDCG
 		}
@@ -454,7 +454,7 @@
 				}
 				
 				float3 upsample = Upsample(_AOFar, _AOFar_TexelSize, i.uv, centerNorm, centerPos.z);
-				return max(upsample.x, AONear / AOSamples);
+				return float4(max(upsample.x, AONear / AOSamples), upsample.y + AONear, upsample.z + AOSamples, 1);
 			}
 			ENDCG
 		}
@@ -614,7 +614,7 @@
 
 			uniform sampler2D _MainTex;
 
-			uniform sampler2D _AOFar;
+			uniform sampler2D _AOFinal;
 
 			uniform int _singleAO;
 			uniform int _Debug;
@@ -624,9 +624,9 @@
 			{
 				float4 ao;
 				if (_singleAO) {
-					ao = 1 - tex2D(_AOFar, i.uv).x;
+					ao = 1 - tex2D(_AOFinal, i.uv).x;
 				}
-				else ao = tex2D(_AOFar, i.uv).x;
+				else ao = tex2D(_AOFinal, i.uv).x;
 
 				float4 color = tex2D(_MainTex, i.uv);
 				if (_Debug) color = float4(1, 1, 1, 1);

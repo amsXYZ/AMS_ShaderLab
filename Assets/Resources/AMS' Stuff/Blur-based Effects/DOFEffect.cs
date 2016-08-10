@@ -70,7 +70,7 @@ namespace UnityStandardAssets.ImageEffects
 
             int rtW = source.width;
             int rtH = source.height;
-            RenderTexture buffer = RenderTexture.GetTemporary(rtW, rtH, 0);
+            RenderTexture buffer = RenderTexture.GetTemporary(rtW, rtH, 0, RenderTextureFormat.ARGBFloat, RenderTextureReadWrite.Linear);
 
             // Copy source to the 4x4 smaller texture.
             DownSample4x(source, buffer);
@@ -78,7 +78,7 @@ namespace UnityStandardAssets.ImageEffects
             // Blur the small texture
             for (int i = 0; i < 5; i++)
             {
-                RenderTexture buffer2 = RenderTexture.GetTemporary(rtW, rtH, 0);
+                RenderTexture buffer2 = RenderTexture.GetTemporary(rtW, rtH, 0, RenderTextureFormat.ARGBFloat, RenderTextureReadWrite.Linear);
                 FourTapCone(buffer, buffer2, i);
                 RenderTexture.ReleaseTemporary(buffer);
                 buffer = buffer2;

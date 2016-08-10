@@ -63,18 +63,18 @@ namespace UnityStandardAssets.ImageEffects
 
             int rtW = source.width / (int) Mathf.Pow(2, downsampling);
             int rtH = source.height / (int) Mathf.Pow(2, downsampling);
-            RenderTexture buffer = RenderTexture.GetTemporary(rtW, rtH, 0);
+            RenderTexture buffer = RenderTexture.GetTemporary(rtW, rtH, 0, RenderTextureFormat.ARGBFloat, RenderTextureReadWrite.Linear);
 
             // Copy source to the 4x4 smaller texture.
             DownSample4x(source, buffer);
 
             materialBloom.SetFloat("_BloomThreshold", threshold);
-            Graphics.Blit(buffer, buffer, materialBloom,0);
+            Graphics.Blit(source, buffer, materialBloom,0);
 
             // Blur the small texture
             for (int i = 0; i < iterations; i++)
             {
-                RenderTexture buffer2 = RenderTexture.GetTemporary(rtW, rtH, 0);
+                RenderTexture buffer2 = RenderTexture.GetTemporary(rtW, rtH, 0, RenderTextureFormat.ARGBFloat, RenderTextureReadWrite.Linear);
                 FourTapCone(buffer, buffer2, i);
                 RenderTexture.ReleaseTemporary(buffer);
                 buffer = buffer2;

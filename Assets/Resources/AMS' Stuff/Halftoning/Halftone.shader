@@ -33,6 +33,8 @@
 
 			uniform float4 _uDims;
 
+			uniform int _BW;
+
 			float aastep(float threshold, float value) {
 				float afwidth = 0.7 * length(float2(ddx(value), ddy(value)));
 				return smoothstep(threshold - afwidth, threshold + afwidth, value);
@@ -141,6 +143,7 @@
 				float y = aastep(0.0, sqrt(cmyk.z) - length(Yuv) + n);
 
 				float3 rgbscreen = 1.0 - 0.9*float3(c, m, y) + n;
+				if (_BW == 1) rgbscreen = float3(1, 1, 1);
 				rgbscreen = lerp(rgbscreen, black, 0.85*k + 0.3*n);
 
 				float afwidth = 2 * _frequency * max(length(ddx(i.uv * aspectRatio)), length(ddy(i.uv * aspectRatio)));
