@@ -54,6 +54,12 @@
 
 			float4 frag(v2f_img i) : COLOR
 			{
+				float2 texUV = i.uv;
+
+				/*#if UNITY_UV_STARTS_AT_TOP
+					if (_MainTex_TexelSize.y < 0.0) texUV.y = 1.0 - texUV.y;
+				#endif*/
+
 				half4 original = tex2D(_MainTex, i.uv);
 
 				half4 center = tex2D(_CameraDepthNormalsTexture, i.uv);

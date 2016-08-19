@@ -1,11 +1,14 @@
 ﻿using UnityEngine;
 using System.Collections;
 
-[ExecuteInEditMode]
+[ExecuteInEditMode, ImageEffectOpaque]
+#if UNITY_5_4_OR_NEWER
+[ImageEffectAllowedInSceneView]
+#endif
 [RequireComponent(typeof(Camera))]
 public class ComicShadows : MonoBehaviour {
 
-    public enum ToonShadows { Plain, Dots, Diamonds, Lines, Debug};
+    public enum ToonShadows { Dots, Diamonds, Lines, Debug};
     public enum ShadowColor { Plain, Gradient };
 
     public ToonShadows shadowType;
@@ -30,9 +33,6 @@ public class ComicShadows : MonoBehaviour {
     {
         switch (shadowType)
         {
-            case ToonShadows.Plain:
-                material = new Material(Shader.Find("Hidden/ToonShading"));
-                break;
             case ToonShadows.Dots:
                 material = new Material(Shader.Find("Hidden/ShadingDots"));
                 break;
@@ -44,9 +44,6 @@ public class ComicShadows : MonoBehaviour {
                 break;
             case ToonShadows.Debug:
                 material = new Material(Shader.Find("Hidden/DebugShading"));
-                break;
-            default:
-                material = new Material(Shader.Find("Hidden/ToonShading"));
                 break;
         }
 
@@ -73,9 +70,6 @@ public class ComicShadows : MonoBehaviour {
     {
         switch (shadowType)
         {
-            case ToonShadows.Plain:
-                material = new Material(Shader.Find("Hidden/ToonShading"));
-                break;
             case ToonShadows.Dots:
                 material = new Material(Shader.Find("Hidden/ShadingDots"));
                 break;
@@ -87,9 +81,6 @@ public class ComicShadows : MonoBehaviour {
                 break;
             case ToonShadows.Debug:
                 material = new Material(Shader.Find("Hidden/DebugShading"));
-                break;
-            default:
-                material = new Material(Shader.Find("Hidden/ToonShading"));
                 break;
         }
 

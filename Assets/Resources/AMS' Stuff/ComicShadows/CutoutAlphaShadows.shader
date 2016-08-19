@@ -64,7 +64,7 @@ Shader "Custom/CutoutAlphaShadows"
 			#include "UnityCG.cginc"
 			#include "AutoLight.cginc"
 
-			#include "UtilityCG.cginc"
+			#include "ComicShadowsCG.cginc"
 
 			sampler2D _MainTex;
 			float4 _MainTex_ST;

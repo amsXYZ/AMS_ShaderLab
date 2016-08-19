@@ -5,13 +5,19 @@
 		_MainTex("Base (RGB)", 2D) = "white" {}
 	}
 
+	///////////////////////////////////////////////
+	// Basic Blur Shader using Unity's BlitMultiTap
+	///////////////////////////////////////////////
 	SubShader
 	{
 		// No culling or depth
 		Cull Off ZWrite Off ZTest Always
 
+		// 0 : Blur
 		Pass
 		{
+			Name "BLUR"
+
 			CGPROGRAM
 			#pragma vertex vert
 			#pragma fragment frag
@@ -24,47 +30,36 @@
 			uniform float4 _MainTex_TexelSize;
 			uniform half4 _BlurOffsets;
 
-			sampler2D_float _CameraDepthTexture;
-
-			struct v2f {
+			//Vert shader struct.
+			struct v2f_blur {
 				float4 pos : SV_POSITION;
 				half2 uv : TEXCOORD0;
-				half2 taps[4] : TEXCOORD1;
+				half2 samples[4] : TEXCOORD1;
 			};
 
-			v2f vert(appdata_img i) {
-				v2f o;
+			v2f_blur vert(appdata_img i) {
+				v2f_blur o;
 				o.pos = mul(UNITY_MATRIX_MVP, i.vertex);
-				o.uv = i.texcoord - _BlurOffsets.xy * _MainTex_TexelSize.xy;
-				o.taps[0] = o.uv + _MainTex_TexelSize * _BlurOffsets.xy;
-				o.taps[1] = o.uv - _MainTex_TexelSize * _BlurOffsets.xy;
-				o.taps[2] = o.uv + _MainTex_TexelSize * _BlurOffsets.xy * half2(1, -1);
-				o.taps[3] = o.uv - _MainTex_TexelSize * _BlurOffsets.xy * half2(1, -1);
+				o.uv = i.texcoord - _BlurOffsets.xy * _MainTex_TexelSize.xy; //Offset the uv's to maintain pixel positions on screen when downsampling.
+
+				//Calculate the samples' uv coordinates.
+				o.samples[0] = o.uv + _MainTex_TexelSize * _BlurOffsets.xy;
+				o.samples[1] = o.uv - _MainTex_TexelSize * _BlurOffsets.xy;
+				o.samples[2] = o.uv + _MainTex_TexelSize * _BlurOffsets.xy * half2(1, -1);
+				o.samples[3] = o.uv - _MainTex_TexelSize * _BlurOffsets.xy * half2(1, -1);
+
 				return o;
 			}
 
-			float4 frag(v2f i) : COLOR
+			float4 frag(v2f_blur i) : COLOR
 			{
-				/*float4 blurA = float4(0,0,0,1);
+				//Sample the four pixel that we'll use to blur the image.
+				float4 color = tex2D(_MainTex, i.samples[0]);
+				color += tex2D(_MainTex, i.samples[1]);
+				color += tex2D(_MainTex, i.samples[2]);
+				color += tex2D(_MainTex, i.samples[3]);
 
-				int kernelASize = _kernelAWidth + (1 - fmod(_kernelAWidth, 2));
-
-				for (int y = -(kernelASize - 1) / 2; y <= (kernelASize - 1) / 2; y++)
-				{
-					for (int x = -(kernelASize - 1) / 2; x <= (kernelASize - 1) / 2; x++) {
-
-						float2 texCoords = float2(i.uv.x + x * _MainTex_TexelSize.x, i.uv.y + y * _MainTex_TexelSize.y);
-						blurA += Gauss(length(texCoords - i.uv), SIGMA) * tex2D(_MainTex, texCoords);
-					}
-				}
-
-				return blurA;*/
-
-				half4 color = tex2D(_MainTex, i.taps[0]);
-				color += tex2D(_MainTex, i.taps[1]);
-				color += tex2D(_MainTex, i.taps[2]);
-				color += tex2D(_MainTex, i.taps[3]);
-
+				//Normalize colors.
 				return color * 0.25;
 			}
 			ENDCG

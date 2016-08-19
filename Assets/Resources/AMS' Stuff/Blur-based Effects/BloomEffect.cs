@@ -1,89 +1,122 @@
 ﻿using UnityEngine;
 
-namespace UnityStandardAssets.ImageEffects
+namespace AMSPostprocessingEffects
 {
-    [ExecuteInEditMode]
+    [ExecuteInEditMode, ImageEffectOpaque]
+#if UNITY_5_4_OR_NEWER
+    [ImageEffectAllowedInSceneView]
+#endif
     [RequireComponent(typeof(Camera))]
     public class BloomEffect : MonoBehaviour
     {
-        [Range(0, 4)]
+        [Header("Bloom Settings")]
+        [Tooltip("Threshold value that specifies where the bloom will be applied (LDR: t<=1, HDR: t<=4)")]
         public float threshold = 0.5f;
-
+        [Tooltip("Bloom's intensity multiplier.")]
         public float intensity = 1;
 
-        [Range(0, 3)]
+        [Header("Blur Settings")]
+        [Range(0, 3), Tooltip("How much will the camera's render texture will be downsampled (1/2^downsampling).")]
         public int downsampling = 2;
-
-        [Range(0, 10)]
+        [Range(0, 10), Tooltip("How many blur iterations will be applied.")]
         public int iterations = 3;
-
-        [Range(0.0f, 1.0f)]
+        [Range(0.0f, 1.0f), Tooltip("How much will be the blur samples spread.")]
         public float blurSpread = 0.6f;
 
-        private Material materialBlur;
-        private Material materialBloom;
+        private Material _materialBlur;
+        private Material _materialBloom;
+        private Camera _camera;
 
-        //Creates a private material used to the effect
+        //////////////////////////////////
+        // Unity Editor related functions.
+        //////////////////////////////////
+
+        // Creates the private materials used to the effect and get the camera component.
         void Awake()
         {
-            materialBlur = new Material(Shader.Find("Hidden/Blur"));
-            materialBloom = new Material(Shader.Find("Hidden/Bloom"));
+            _materialBlur = new Material(Shader.Find("Hidden/Blur"));
+            _materialBloom = new Material(Shader.Find("Hidden/Bloom"));
+            _camera = GetComponent<Camera>();
         }
 
-        // Performs one blur iteration.
-        public void FourTapCone(RenderTexture source, RenderTexture dest, int iteration)
+        // Methods used to take care of the materials when enabling/disabling the effects in the inspector.
+        void OnDisable()
         {
-            float off = 0.5f + iteration * blurSpread;
-            Graphics.BlitMultiTap(source, dest, materialBlur,
-                                   new Vector2(-off, -off),
-                                   new Vector2(-off, off),
-                                   new Vector2(off, off),
-                                   new Vector2(off, -off)
-                );
+            if (_materialBlur) DestroyImmediate(_materialBlur);
+            _materialBlur = null;
+
+            if (_materialBloom) DestroyImmediate(_materialBloom);
+            _materialBloom = null;
+        }
+        void OnEnable()
+        {
+            if (!_materialBlur) _materialBlur = new Material(Shader.Find("Hidden/Blur"));
+            if (!_materialBloom) _materialBloom = new Material(Shader.Find("Hidden/Bloom"));
+            if (!_camera) _camera = GetComponent<Camera>();
         }
 
-        // Downsamples the texture to a quarter resolution.
-        private void DownSample4x(RenderTexture source, RenderTexture dest)
+        ///<summary>
+        /// Get the effect's camera HDR flag.
+        ///</summary>
+        public bool HDR()
         {
-            float off = 1.0f;
-            Graphics.BlitMultiTap(source, dest, materialBlur,
-                                   new Vector2(-off, -off),
-                                   new Vector2(-off, off),
-                                   new Vector2(off, off),
-                                   new Vector2(off, -off)
-                );
+            return _camera.hdr;
         }
+
+        //////////////////////////////////////
+        // Post-processing effect application.
+        //////////////////////////////////////
 
         // Called by the camera to apply the image effect
         void OnRenderImage(RenderTexture source, RenderTexture destination)
         {
-            //Downsample the texture
-            //Blur it
-            //Add it as with add mode
-
+            //Determine the size of the render texture we'll use.
             int rtW = source.width / (int) Mathf.Pow(2, downsampling);
             int rtH = source.height / (int) Mathf.Pow(2, downsampling);
-            RenderTexture buffer = RenderTexture.GetTemporary(rtW, rtH, 0, RenderTextureFormat.ARGBFloat, RenderTextureReadWrite.Linear);
 
-            // Copy source to the 4x4 smaller texture.
-            DownSample4x(source, buffer);
+            //Determine the format of the render texture we'll use.
+            RenderTextureFormat rtFormat;
+            if (_camera.hdr)
+            {
+                if (SystemInfo.SupportsRenderTextureFormat(RenderTextureFormat.ARGBFloat)) rtFormat = RenderTextureFormat.ARGBFloat;
+                else rtFormat = RenderTextureFormat.DefaultHDR;
+            }
+            else rtFormat = RenderTextureFormat.Default;
 
-            materialBloom.SetFloat("_BloomThreshold", threshold);
-            Graphics.Blit(source, buffer, materialBloom,0);
+            //Downsample the camera's RenderTexture and store it in a smaller new one.
+            RenderTexture finalBloomBuffer = RenderTexture.GetTemporary(rtW, rtH, 0, rtFormat, RenderTextureReadWrite.Linear);
+            Graphics.BlitMultiTap(source, finalBloomBuffer, _materialBlur,
+                                   new Vector2(-1, -1),
+                                   new Vector2(-1, 1),
+                                   new Vector2(1, 1),
+                                   new Vector2(1, -1));
 
-            // Blur the small texture
+            //Substract the threshold value to the sample texture's pixels.
+            _materialBloom.SetFloat("_BloomThreshold", threshold);
+            Graphics.Blit(source, finalBloomBuffer, _materialBloom,0);
+
+            //Blur the downsampled texture.
             for (int i = 0; i < iterations; i++)
             {
-                RenderTexture buffer2 = RenderTexture.GetTemporary(rtW, rtH, 0, RenderTextureFormat.ARGBFloat, RenderTextureReadWrite.Linear);
-                FourTapCone(buffer, buffer2, i);
-                RenderTexture.ReleaseTemporary(buffer);
-                buffer = buffer2;
-            }
-            materialBloom.SetFloat("_BloomIntensity", intensity);
-            materialBloom.SetTexture("_OriginalTex", source);
-            Graphics.Blit(buffer, destination, materialBloom, 1);
+                RenderTexture temporaryBlurBuffer = RenderTexture.GetTemporary(rtW, rtH, 0, rtFormat, RenderTextureReadWrite.Linear);
 
-            RenderTexture.ReleaseTemporary(buffer);
+                //Calculate the spread of the blur samples.
+                float offset = i * blurSpread;
+                Graphics.BlitMultiTap(finalBloomBuffer, temporaryBlurBuffer, _materialBlur,
+                                   new Vector2(-offset, -offset),
+                                   new Vector2(-offset, offset),
+                                   new Vector2(offset, offset),
+                                   new Vector2(offset, -offset));
+
+                finalBloomBuffer = temporaryBlurBuffer;
+                if (i == iterations - 1) RenderTexture.ReleaseTemporary(temporaryBlurBuffer);
+            }
+
+            //Add the final blurred bloom texture to the source render texture.
+            _materialBloom.SetFloat("_BloomIntensity", intensity);
+            _materialBloom.SetTexture("_OriginalTex", source);
+            Graphics.Blit(finalBloomBuffer, destination, _materialBloom, 1);
+            return;
         }
     }
 }

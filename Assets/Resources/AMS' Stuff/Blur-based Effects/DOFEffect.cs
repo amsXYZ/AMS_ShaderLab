@@ -1,8 +1,11 @@
 ﻿using UnityEngine;
 
-namespace UnityStandardAssets.ImageEffects
+namespace AMSPostprocessingEffects
 {
-    [ExecuteInEditMode]
+    [ExecuteInEditMode, ImageEffectOpaque]
+#if UNITY_5_4_OR_NEWER
+    [ImageEffectAllowedInSceneView]
+#endif
     [RequireComponent(typeof(Camera))]
     public class DOFEffect : MonoBehaviour
     {
@@ -16,6 +19,8 @@ namespace UnityStandardAssets.ImageEffects
         public float aperture = 0.5f;
         //[Range(0.1f, 2)]
         //public float maxBlurSize = 0.5f;
+
+        public bool Debug;
 
         private float internalBlurWidth = 1.0f;
 
@@ -62,9 +67,10 @@ namespace UnityStandardAssets.ImageEffects
         // Called by the camera to apply the image effect
         void OnRenderImage(RenderTexture source, RenderTexture destination)
         {
-            material.SetFloat("_FocusDepth", (focusObject != null) ? CalculateDepth(Vector3.Distance(focusObject.transform.position, camera.transform.position)) : CalculateDepth(focalDistance));
+            material.SetFloat("_FocusDepth", (focusObject) ? (camera.WorldToViewportPoint(focusObject.position)).z / (camera.farClipPlane) : camera.WorldToViewportPoint((focalDistance - camera.nearClipPlane) * camera.transform.forward + camera.transform.position).z / (camera.farClipPlane - camera.nearClipPlane));
             material.SetFloat("_FocalSize", focalSize);
             material.SetFloat("_Aperture", 1.0f / (1.0f - aperture) - 1.0f);
+            material.SetInt("_Debug", Debug ? 1 : 0);
 
             material.SetFloat("_FocalSize", focalSize);
 

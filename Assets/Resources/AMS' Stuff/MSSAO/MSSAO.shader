@@ -119,7 +119,7 @@
 					finalNormal = normal[depth1Index];
 				}
 
-				if (depth[0] >= _ProjectionParams.z - (1.0 / 65025.0) * _ProjectionParams.z) finalNormal = float3(0,0,0);
+				if (depth[0] >= _ProjectionParams.z - (1.0 / 65025.0) * _ProjectionParams.z) finalNormal = float3(0,0,-1);
 
 				return float4(finalNormal, 1);
 			}
@@ -311,9 +311,9 @@
 				float rangeMax = min(_r / abs(centerPos.z), _maxKernelSize);
 
 				//Adjust to rangeMax
-				for (float k = -5; k <= 5; k += 2)
+				for (float k = -7; k <= 7; k += 2)
 				{
-					for (float q = -5; q <= 5; q += 2)
+					for (float q = -7; q <= 7; q += 2)
 					{
 						AONear += ComputeOcclusion(i.uv + float2(floor(1.0001 * q), floor(1.0001 * k)) * _MainTex_TexelSize * _Radius, centerPos, centerNorm);
 						AOSamples++;
@@ -444,9 +444,9 @@
 				float rangeMax = min(_r / abs(centerPos.z), _maxKernelSize);
 
 				//Adjust to rangeMax
-				for (float k = -5; k <= 5; k += 2)
+				for (float k = -7; k <= 7; k += 2)
 				{
-					for (float q = -5; q <= 5; q += 2)
+					for (float q = -7; q <= 7; q += 2)
 					{
 						AONear += ComputeOcclusion(i.uv + float2(floor(1.0001 * q), floor(1.0001 * k)) * _MainTex_TexelSize * _Radius, centerPos, centerNorm);
 						AOSamples++;
@@ -512,8 +512,8 @@
 				float3 sampleNorm = tex2D(_normTex, sampleUV);
 				float3 samplePos = SamplePosition(_posTex, sampleUV);
 
-				float d = distance(centerPos, samplePos);
-				float t = 1 - min(1, (d * d) / (_maxDist * _maxDist));
+				float d = distance(samplePos, centerPos);
+				float t = 1 - min(1, pow(d, 2) / pow(_maxDist,2));
 
 				float3 diff = normalize(samplePos - centerPos);
 				float cosTheta = max(dot(centerNorm, diff), 0);
