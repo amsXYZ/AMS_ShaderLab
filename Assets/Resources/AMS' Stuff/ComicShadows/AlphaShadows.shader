@@ -17,14 +17,71 @@ Shader "Custom/AlphaShadows"
 		[HideInSpector]_Mode("_Mode", Float) = 0
 	}
 
-	///////////////////////
-	// Alpha Shadows Shader
-	///////////////////////
+	//////////////////////////
+	// Alpha Shadows Shader //
+	//////////////////////////
 	SubShader
 	{
 		Tags{ "RenderType" = "Opaque" "PerformanceChecks" = "False" }
+		
+		// 0: ShadowCaster
+		Pass{
+			Name "ShadowCaster"
+			Tags{ "LightMode" = "ShadowCaster" }
 
-		// Forward Base pass (vertex lighting)
+			Blend One Zero
+			ZWrite On ZTest LEqual
+			Cull Off
+
+			CGPROGRAM
+			#pragma target 5.0
+
+			#pragma shader_feature _ _ALPHATEST_ON
+			#pragma multi_compile_shadowcaster
+
+			#pragma vertex vertShadowCaster
+			#pragma fragment fragShadowCaster
+
+			#include "UnityCG.cginc"
+
+			half		_Cutoff;
+			sampler2D	_MainTex;
+			float4		_MainTex_ST;
+
+			struct VertexInput
+			{
+				float4 vertex	: POSITION;
+				float3 normal	: NORMAL;
+				float2 uv0		: TEXCOORD0;
+			};
+
+			struct VertexOutputShadowCaster
+			{
+				V2F_SHADOW_CASTER_NOPOS
+				float2 tex : TEXCOORD1;
+			};
+
+			void vertShadowCaster (VertexInput v, out VertexOutputShadowCaster o, out float4 opos : SV_POSITION)
+			{
+				TRANSFER_SHADOW_CASTER_NOPOS(o,opos)
+				o.tex = TRANSFORM_TEX(v.uv0, _MainTex);
+			}
+
+			//Simple shaodw caster who takes in to account the alpha depending on the rendering mode.
+			half4 fragShadowCaster (VertexOutputShadowCaster i) : SV_Target
+			{
+				half alpha = tex2D(_MainTex, i.tex).a;
+				#if defined(_ALPHATEST_ON)
+							clip(alpha - _Cutoff);
+				#endif
+
+				SHADOW_CASTER_FRAGMENT(i)
+			}
+
+			ENDCG
+		}
+
+		// 1: Forward Base pass
 		Pass
 		{
 			Name "FORWARD"
@@ -51,10 +108,8 @@ Shader "Custom/AlphaShadows"
 			uniform float4 _MainTex_ST;
 			uniform fixed _Cutoff;
 			uniform sampler2D _NormalMap;
-			uniform float4 _NormalMap_ST;
 			uniform float _NormalIntensity;
 			uniform sampler2D _EmissionMap;
-			uniform float4 _EmissionMap_ST;
 			uniform float4 _EmissionColor;
 			uniform float _Hue;
 			uniform float _Saturation;
@@ -73,8 +128,6 @@ Shader "Custom/AlphaShadows"
 				o.normal = v.normal;
 				o.color = v.color;
 				o.uv = TRANSFORM_TEX(v.uv, _MainTex);
-				o.emissionuv = TRANSFORM_TEX(v.uv, _EmissionMap);
-				o.normaluv = TRANSFORM_TEX(v.uv, _NormalMap);
 				o.position = mul(unity_ObjectToWorld, v.pos).xyz;
 
 				// Calculate normal, tangent and bitangent world vectors
@@ -100,16 +153,16 @@ Shader "Custom/AlphaShadows"
 			float4 frag(v2f i) : SV_Target
 			{
 				// Sample the texture and modify the color
-				HSBColor baseColor = RGB2HSB(tex2D(_MainTex, i.uv));
-				baseColor.h += _Hue;
-				baseColor.s += _Saturation;
+				float3 baseColor = rgb_to_hsv(tex2D(_MainTex, i.uv));
+				baseColor.r += _Hue;
+				baseColor.g += _Saturation;
 				baseColor.b += _Value;
 
 				// Calculate the tangent space matrix
 				float3x3 tangentToWorldSpace = float3x3(i.tangentWorld, i.binormalWorld, i.normalWorld);
 
 				// Calculate world Normal, Eye and Light vector
-				float3 N = mul(normalize(UnpackNormal(tex2D(_NormalMap, i.normaluv))), tangentToWorldSpace);
+				float3 N = mul(normalize(UnpackNormal(tex2D(_NormalMap, i.uv))), tangentToWorldSpace);
 				float3 E = -normalize(UnityWorldSpaceViewDir(i.position));
 				float3 L = normalize(UnityWorldSpaceLightDir(i.position));
 
@@ -126,24 +179,22 @@ Shader "Custom/AlphaShadows"
 				_Levels = floor(_Levels);
 				float scaleFactor = 1 / _Levels;
 				float toonShadow = round(shadowLum * _Levels) * scaleFactor;
-				toonShadow = smoothstep(0, 1, toonShadow);
 				float3 toonLight = toonShadow * (_LightColor0 + i.vertexlighting);
 
 				// Read the emissive value
-				float emissiveValue = tex2D(_EmissionMap, i.emissionuv).r;
+				float emissiveValue = tex2D(_EmissionMap, i.uv).r;
 
+				// Sample the ambient color of the skybox and multiply and add the main light's color to it
 				float3 reflectedDir = reflect(E, N);
-				// sample the default reflection cubemap, using the reflection vector
 				float4 skyData = UNITY_SAMPLE_TEXCUBE_LOD(unity_SpecCube0, reflectedDir, 5);
-				// decode cubemap data into actual color
 				float3 skyColor = DecodeHDR(skyData, unity_SpecCube0_HDR);
-
 				float3 colouredSkyColor = lerp(skyColor, skyColor + toonLight, toonShadow);
 
 				// Composite the final color
-				float4 finalColor = _EmissionColor * _EmissionColor.w * emissiveValue + HSB2RGB(baseColor) * float4(colouredSkyColor, 1);
+				float4 finalColor = float4(_EmissionColor * _EmissionColor.w * emissiveValue + hsv_to_rgb(baseColor) * colouredSkyColor, 1);
 				finalColor.w = lerp(toonShadow, 1, emissiveValue * _EmissionColor.w);
 
+				// Clip the fragment if necessary
 				clip(tex2D(_MainTex, i.uv).w - _Cutoff * _Mode);
 
 				return finalColor;
@@ -151,7 +202,7 @@ Shader "Custom/AlphaShadows"
 			ENDCG
 		}
 
-		// Forward Additive pass (vertex lighting)
+		// 2: Forward Additive pass
 		Pass
 		{
 			Name "FORWARD_DELTA"
@@ -169,12 +220,14 @@ Shader "Custom/AlphaShadows"
 			#pragma fragment fragAdd
 			#include "UnityStandardCore.cginc"
 
-			sampler2D _NormalMap;
-			float _Levels;
+			uniform sampler2D _NormalMap;
+			uniform float _Levels;
 			uniform int _Mode;
 
+			// Initialization of the main values we'll use on the fragment shader.
 			VertexOutputForwardAdd vertAdd(VertexInput v)
 			{
+				// We used these unity structs and methods to later calculate properly both attenuation and intensity.
 				VertexOutputForwardAdd o;
 				UNITY_INITIALIZE_OUTPUT(VertexOutputForwardAdd, o);
 
@@ -215,13 +268,16 @@ Shader "Custom/AlphaShadows"
 			{
 				FRAGMENT_SETUP_FWDADD(s)
 
+				// Creation of the tangent to world matrix to apply normal maps correctly
 				float3 N = normalize(UnpackNormal(tex2D(_NormalMap, i.tex)));
 				float3x3 tangentToWorld = float3x3(i.tangentToWorldAndLightDir[0].xyz, i.tangentToWorldAndLightDir[1].xyz, i.tangentToWorldAndLightDir[2].xyz);
 
+				// Definition of out Unity's additive light
 				UnityLight light = AdditiveLight(mul(N, tangentToWorld), IN_LIGHTDIR_FWDADD(i), LIGHT_ATTENUATION(i));
 
 				half lum = max(light.color.r, max(light.color.g, light.color.b))*light.ndotl/32;
 
+				// Calculation of the light's intensity
 				_Levels = floor(_Levels);
 				float scaleFactor = 1 / _Levels;
 				float toonShadow = round(lum * _Levels) * scaleFactor;
@@ -229,6 +285,7 @@ Shader "Custom/AlphaShadows"
 
 				half4 color = half4(toonColor, toonShadow);
 
+				// Clip the fragment if needed
 				clip(tex2D(_MainTex, i.tex).w - _Cutoff * _Mode);
 
 				return color;

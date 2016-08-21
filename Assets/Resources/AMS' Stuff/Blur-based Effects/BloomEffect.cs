@@ -2,7 +2,7 @@
 
 namespace AMSPostprocessingEffects
 {
-    [ExecuteInEditMode, ImageEffectOpaque]
+    [ExecuteInEditMode]
 #if UNITY_5_4_OR_NEWER
     [ImageEffectAllowedInSceneView]
 #endif

@@ -1,135 +1,87 @@
 ﻿using UnityEngine;
-using System.Collections;
 
-[ExecuteInEditMode, ImageEffectOpaque]
+namespace AMSPostprocessingEffects
+{
+    [ExecuteInEditMode, ImageEffectOpaque]
 #if UNITY_5_4_OR_NEWER
-[ImageEffectAllowedInSceneView]
+    [ImageEffectAllowedInSceneView]
 #endif
-[RequireComponent(typeof(Camera))]
-public class ComicShadows : MonoBehaviour {
-
-    public enum ToonShadows { Dots, Diamonds, Lines, Debug};
-    public enum ShadowColor { Plain, Gradient };
-
-    public ToonShadows shadowType;
-    [Range(2, 100)]
-    public float levels;
-    [Range(0, 180)]
-    public float angle;
-    [Range(0, 100)]
-    public float frequency;
-    [Range(0, 10)]
-    public float size;
-    [Range(0, 10)]
-    public float separation;
-    //public ShadowColor shadowColorType;
-    //public Gradient shadowGradient;
-    public Color shadowColor;
-
-    private Material material;
-
-    //Creates a private material used to the effect
-    void Awake()
+    [RequireComponent(typeof(Camera))]
+    public class ComicShadows : MonoBehaviour
     {
-        switch (shadowType)
-        {
-            case ToonShadows.Dots:
-                material = new Material(Shader.Find("Hidden/ShadingDots"));
-                break;
-            case ToonShadows.Diamonds:
-                material = new Material(Shader.Find("Hidden/ShadingDiamonds"));
-                break;
-            case ToonShadows.Lines:
-                material = new Material(Shader.Find("Hidden/ShadingLines"));
-                break;
-            case ToonShadows.Debug:
-                material = new Material(Shader.Find("Hidden/DebugShading"));
-                break;
-        }
 
-        Object[] renderers = GameObject.FindObjectsOfType(typeof(Renderer));
-        int i_max = renderers.Length;
-        for (int i = 0; i < i_max; i++)
+        public enum ToonShadows { Dots, Diamonds, Lines, Debug };
+
+        public ToonShadows shadowType = ToonShadows.Dots;
+        public Color shadowColor = Color.black;
+        
+        public float levels = 100;
+        public float angle = 45;
+        public float frequency = 100;
+        public float size = 1;
+        public float separation = 1;
+
+        private Material material;
+
+        private void SetupMaterial()
         {
-            Material[] materials = ((Renderer)renderers[i]).sharedMaterials;
-            int j_max = materials.Length;
-            for (int j = 0; j < j_max; j++)
+            switch (shadowType)
             {
-                string s = materials[j].shader.name;
-
-                if (s == "Custom/AlphaShadows" || s == "Custom/CutoutAlphaShadows")
-                {
-                    materials[j].SetFloat("_Levels", levels);
-                }
+                case ToonShadows.Dots:
+                    material = new Material(Shader.Find("Hidden/ShadingDots"));
+                    break;
+                case ToonShadows.Diamonds:
+                    material = new Material(Shader.Find("Hidden/ShadingDiamonds"));
+                    break;
+                case ToonShadows.Lines:
+                    material = new Material(Shader.Find("Hidden/ShadingLines"));
+                    break;
+                case ToonShadows.Debug:
+                    material = new Material(Shader.Find("Hidden/DebugShading"));
+                    break;
             }
         }
 
-    }
-
-    void OnValidate()
-    {
-        switch (shadowType)
+        //Creates a private material used to the effect
+        void Awake()
         {
-            case ToonShadows.Dots:
-                material = new Material(Shader.Find("Hidden/ShadingDots"));
-                break;
-            case ToonShadows.Diamonds:
-                material = new Material(Shader.Find("Hidden/ShadingDiamonds"));
-                break;
-            case ToonShadows.Lines:
-                material = new Material(Shader.Find("Hidden/ShadingLines"));
-                break;
-            case ToonShadows.Debug:
-                material = new Material(Shader.Find("Hidden/DebugShading"));
-                break;
+            SetupMaterial();
         }
 
-        Object[] renderers = GameObject.FindObjectsOfType(typeof(Renderer));
-        int i_max = renderers.Length;
-        for (int i = 0; i < i_max; i++)
+        void OnValidate()
         {
-            Material[] materials = ((Renderer)renderers[i]).sharedMaterials;
-            int j_max = materials.Length;
-            for (int j = 0; j < j_max; j++)
-            {
-                string s = materials[j].shader.name;
+            SetupMaterial();
+        }
 
-                if (s == "Custom/AlphaShadows" || s == "Custom/CutoutAlphaShadows")
+        void Reset() {
+            SetupMaterial();
+        }
+
+        [ImageEffectOpaque]
+        void OnRenderImage(RenderTexture source, RenderTexture destination)
+        {
+            material.SetFloat("_angle", angle);
+            material.SetFloat("_frequency", frequency);
+            material.SetFloat("_size", size);
+            material.SetFloat("_separation", separation);
+            material.SetColor("_shadowColor", shadowColor);
+
+            Object[] renderers = GameObject.FindObjectsOfType(typeof(Renderer));
+            for (int i = 0; i < renderers.Length; i++)
+            {
+                Material[] materials = ((Renderer)renderers[i]).sharedMaterials;
+                for (int j = 0; j < materials.Length; j++)
                 {
-                    materials[j].SetFloat("_Levels", levels);
+                    string s = materials[j].shader.name;
+
+                    if (s == "Custom/AlphaShadows")
+                    {
+                        materials[j].SetFloat("_Levels", levels);
+                    }
                 }
             }
+
+            Graphics.Blit(source, destination, material);
         }
-
-    }
-
-    [ImageEffectOpaque]
-    void OnRenderImage (RenderTexture source, RenderTexture destination)
-    {
-        material.SetFloat("_angle", angle);
-        material.SetFloat("_frequency", frequency);
-        material.SetFloat("_size", size);
-        material.SetFloat("_separation", separation);
-        material.SetColor("_shadowColor", shadowColor);
-        //material.SetColor("_lightColor", shadowGradient.Evaluate(1));
-
-        Object[] renderers = GameObject.FindObjectsOfType(typeof(Renderer));
-        int i_max = renderers.Length;
-        for (int i = 0; i < i_max; i++)
-        {
-            Material[] materials = ((Renderer)renderers[i]).sharedMaterials;
-            int j_max = materials.Length;
-            for (int j = 0; j < j_max; j++)
-            {
-                string s = materials[j].shader.name;
-
-                if (s == "Custom/AlphaShadows" || s == "Custom/CutoutAlphaShadows")
-                {
-                    materials[j].SetFloat("_Levels", levels);
-                }
-            }
-        }
-
-        Graphics.Blit(source, destination, material);
     }
 }

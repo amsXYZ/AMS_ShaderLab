@@ -2,7 +2,7 @@
 
 namespace AMSPostprocessingEffects
 {
-    [ExecuteInEditMode, ImageEffectOpaque]
+    [ExecuteInEditMode]
 #if UNITY_5_4_OR_NEWER
     [ImageEffectAllowedInSceneView]
 #endif
@@ -166,8 +166,8 @@ namespace AMSPostprocessingEffects
             int dim = LUT.height;
             if (LUT.width != dim * dim) Debug.LogError("This LUT hasn't the right size (x,x*x)");
 
-            Color[] sourceTexture = LUT.GetPixels();
-            Color[] depthTextures = new Color[dim * dim * dim];
+            Color32[] sourceTexture = LUT.GetPixels32();
+            Color32[] depthTextures = new Color32[dim * dim * dim];
 
             for (int i = 0; i < dim; i++)
             {
@@ -183,7 +183,7 @@ namespace AMSPostprocessingEffects
 
             Texture3D LUT3D = new Texture3D(dim, dim, dim, TextureFormat.RGBA32, false);
             LUT3D.wrapMode = TextureWrapMode.Clamp;
-            LUT3D.SetPixels(depthTextures);
+            LUT3D.SetPixels32(depthTextures);
             LUT3D.Apply();
 
             return LUT3D;

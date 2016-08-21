@@ -5,9 +5,9 @@
 		_MainTex("Base (RGB)", 2D) = "white" {}
 	}
 
-	///////////////////////
-	// Color Grading Shader
-	///////////////////////
+	//////////////////////////
+	// Color Grading Shader //
+	//////////////////////////
 	SubShader
 	{
 		// No culling or depth

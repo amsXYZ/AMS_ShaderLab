@@ -11,6 +11,7 @@ namespace UnityEditor
             Cutout
         }
 
+        // Class used to store all the stings and tooltips used by the inspector.
         private static class Styles
         {
             public static GUIContent albedoText = new GUIContent("Albedo", "Albedo without transparency (RGB)");
@@ -72,9 +73,13 @@ namespace UnityEditor
                 {
                     case BlendMode.Opaque:
                         material.SetOverrideTag("RenderType", "Opaque");
+                        material.DisableKeyword("_ALPHATEST_ON");
+                        material.renderQueue = -1;
                         break;
                     case BlendMode.Cutout:
                         material.SetOverrideTag("RenderType", "TransparentCutout");
+                        material.EnableKeyword("_ALPHATEST_ON");
+                        material.renderQueue = (int)UnityEngine.Rendering.RenderQueue.AlphaTest;
                         break;
                 }
 
@@ -92,22 +97,23 @@ namespace UnityEditor
             // Detect any changes to the material
             EditorGUI.BeginChangeCheck();
             {
+                // Blend mode
                 BlendModePopup();
 
                 // Primary properties
                 GUILayout.Label(Styles.primaryMapsText, EditorStyles.boldLabel);
                 
-                //Albedo
+                // Albedo
                 _materialEditor.TexturePropertySingleLine(Styles.albedoText, _albedoMap);
                 if (((BlendMode)material.GetFloat("_Mode") == BlendMode.Cutout))
                 {
                     _materialEditor.ShaderProperty(_alphaCutoff, Styles.alphaCutoffText.text, MaterialEditor.kMiniTextureFieldLabelIndentLevel + 1);
                 }
 
-                //Normal
+                // Normal
                 _materialEditor.TexturePropertySingleLine(Styles.normalText, _normalMap);
 
-                //Emission
+                // Emission
                 bool hadEmissionTexture = _emissionMap.textureValue != null;
 
                 // Texture and HDR color controls
@@ -118,12 +124,13 @@ namespace UnityEditor
                 if (_emissionMap.textureValue != null && !hadEmissionTexture && brightness <= 0f)
                     _emissionColor.colorValue = Color.white;
 
+                // Draw the tiliding and offset panels of the albedo map (which we'll use for the other textures too)
                 EditorGUI.BeginChangeCheck();
                 _materialEditor.TextureScaleOffsetProperty(_albedoMap);
                 if (EditorGUI.EndChangeCheck())
                     _emissionMap.textureScaleAndOffset = _normalMap.textureScaleAndOffset = _albedoMap.textureScaleAndOffset;
 
-                //HSV
+                // HSV
                 GUILayout.Label(Styles.hsvText, EditorStyles.boldLabel);
                 _materialEditor.ShaderProperty(_hue, Styles.hueText.text);
                 _materialEditor.ShaderProperty(_saturation, Styles.saturationText.text);
@@ -132,6 +139,7 @@ namespace UnityEditor
             }
             if (EditorGUI.EndChangeCheck())
             {
+                // Set again the rendering tags and keywords
                 foreach (var obj in _blendMode.targets)
                 {
                     Material mat = (Material)obj;
@@ -139,15 +147,20 @@ namespace UnityEditor
                     {
                         case BlendMode.Opaque:
                             mat.SetOverrideTag("RenderType", "Opaque");
+                            mat.DisableKeyword("_ALPHATEST_ON");
+                            mat.renderQueue = -1;
                             break;
                         case BlendMode.Cutout:
                             mat.SetOverrideTag("RenderType", "TransparentCutout");
+                            mat.EnableKeyword("_ALPHATEST_ON");
+                            mat.renderQueue = (int)UnityEngine.Rendering.RenderQueue.AlphaTest;
                             break;
                     }
                 }
             }
         }
 
+        // Draw the blending mode popup
         void BlendModePopup()
         {
             EditorGUI.showMixedValue = _blendMode.hasMixedValue;

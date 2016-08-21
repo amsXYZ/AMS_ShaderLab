@@ -3,15 +3,11 @@
 	Properties
 	{
 		_MainTex ("Base (RGB)", 2D) = "white" {}
-		_levels ("Levels", Range(2,30)) = 2
-		_angle ("Angle", Range(0,180)) = 30
-		_frequency ("Frequency", Range(0,1)) = 0.75
-		_size("Size", Range(0,10)) = 1
-		_separation("Separation", Range(0,10)) = 1
-		_shadowColor ("Shadow Color", Color) = (0,0,0,1)
-		_lightColor("Light Color", Color) = (1,1,1,1)
 	}
 	
+	/////////////////////////////////
+	// Comic Shadows' Dots Shader //
+	/////////////////////////////////
 	SubShader
 	{
 		// No culling or depth
@@ -34,10 +30,8 @@
 			uniform float _size;
 			uniform float _separation;
 			uniform float4 _shadowColor;
-			uniform float4 _lightColor;
 
-			sampler2D_float _CameraDepthTexture;
-
+			// Function used to smooth out the transition between shaded and lit zones
 			float aastep(float threshold, float value) {
 				float afwidth = 0.7 * length(float2(ddx(value), ddy(value)));
 				return smoothstep(threshold - afwidth, threshold + afwidth, value);
@@ -45,19 +39,23 @@
 
 			float4 frag (v2f_img i) : COLOR
 			{
+				// Read the color from screen
 				float4 c = tex2D(_MainTex, i.uv);
 
+				// Calculate the aspect ratio (to properly determine the pattern's width/height)
 				float2 aspectRatio = (_ScreenParams.x < _ScreenParams.y) ? float2(1, _ScreenParams.y / _ScreenParams.x) : float2(_ScreenParams.x / _ScreenParams.y, 1);
 
+				// Creation of the dotted pattern (based on angle and frequency) and determination of the closest dot to a pixel (and its distance)
 				float2x2 rotMatrix = { cos(radians(_angle)), -sin(radians(_angle)), sin(radians(_angle)), cos(radians(_angle)) };
 				float2 st2 = mul(mul(_frequency, rotMatrix), i.uv.xy *  aspectRatio);
 				float2 nearest = 2.0*abs(st2%_separation) - _separation;
 				float dist = length(nearest);
 
+				// Read the shadow strength (or radius) from the pixel's value
 				float radius = sqrt(1.0 - c.w);
 
+				// Calculate the final shadow intensity and lerp between the shadow color and the pixel color using it
 				float shadowIntensity = lerp(aastep(pow(radius, 10 - _size) , dist), 1, saturate(c.w));
-
 				return lerp(lerp(c, _shadowColor, _shadowColor.w), c, shadowIntensity);
 			}
 			ENDCG
