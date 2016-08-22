@@ -15,6 +15,8 @@ Shader "Custom/AlphaShadows"
 		_Saturation("Saturation",Range(-1,1)) = 0
 		_Value("Value",Range(-1,1)) = 0
 		[HideInSpector]_Mode("_Mode", Float) = 0
+
+		_Color("Color", Color) = (1,1,1,1)
 	}
 
 	//////////////////////////
@@ -29,7 +31,6 @@ Shader "Custom/AlphaShadows"
 			Name "ShadowCaster"
 			Tags{ "LightMode" = "ShadowCaster" }
 
-			Blend One Zero
 			ZWrite On ZTest LEqual
 			Cull Off
 
@@ -72,7 +73,7 @@ Shader "Custom/AlphaShadows"
 			{
 				half alpha = tex2D(_MainTex, i.tex).a;
 				#if defined(_ALPHATEST_ON)
-							clip(alpha - _Cutoff);
+						clip(alpha - _Cutoff);
 				#endif
 
 				SHADOW_CASTER_FRAGMENT(i)

@@ -27,9 +27,9 @@ namespace AMSPostprocessingEffects
         private Material _materialBloom;
         private Camera _camera;
 
-        //////////////////////////////////
-        // Unity Editor related functions.
-        //////////////////////////////////
+        ////////////////////////////////////
+        // Unity Editor related functions //
+        ////////////////////////////////////
 
         // Creates the private materials used to the effect and get the camera component.
         void Awake()
@@ -63,9 +63,9 @@ namespace AMSPostprocessingEffects
             return _camera.hdr;
         }
 
-        //////////////////////////////////////
-        // Post-processing effect application.
-        //////////////////////////////////////
+        ////////////////////////////////////////
+        // Post-processing effect application //
+        ////////////////////////////////////////
 
         // Called by the camera to apply the image effect
         void OnRenderImage(RenderTexture source, RenderTexture destination)

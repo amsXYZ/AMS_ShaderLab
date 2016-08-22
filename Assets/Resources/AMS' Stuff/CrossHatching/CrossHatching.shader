@@ -17,9 +17,9 @@ Shader "Custom/CrossHatching"
 		_TAM("Tex", 2DArray) = "" {}
 	}
 
-	//////////////////////////
+	///////////////////////////
 	// Cross-Hatching Shader //
-	//////////////////////////
+	///////////////////////////
 	SubShader
 	{
 		Tags{ "RenderType" = "Opaque" "PerformanceChecks" = "False" }

@@ -31,7 +31,7 @@
 			uniform float _separation;
 			uniform float4 _shadowColor;
 
-			// Function used to smooth out the transition between shaded and lit zones
+			// Antialiased step function based on this tutorial: http://webstaff.itn.liu.se/~stegu/webglshadertutorial/shadertutorial.html
 			float aastep(float threshold, float value) {
 				float afwidth = 0.7 * length(float2(ddx(value), ddy(value)));
 				return smoothstep(threshold - afwidth, threshold + afwidth, value);

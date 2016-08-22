@@ -30,6 +30,9 @@ public class ComicShadowsEditor : Editor
         // Update the changes on the serialized object.
         serializedObject.Update();
 
+        EditorGUILayout.Space();
+        EditorGUILayout.LabelField("Shadow Settings", EditorStyles.boldLabel);
+
         // Draw the properties based on the shadowType and control their values.
         EditorGUILayout.PropertyField(shadowType);
 
@@ -41,6 +44,9 @@ public class ComicShadowsEditor : Editor
 
         if (shadowType.enumValueIndex != (int)ComicShadows.ToonShadows.Debug)
         {
+            EditorGUILayout.Space();
+            EditorGUILayout.LabelField("Shadow Pattern Settings", EditorStyles.boldLabel);
+
             EditorGUILayout.PropertyField(angle);
             EditorGUILayout.PropertyField(frequency);
             EditorGUILayout.PropertyField(size);
@@ -52,6 +58,7 @@ public class ComicShadowsEditor : Editor
             if (frequency.floatValue < 0.0f) frequency.floatValue = 0.0f;
 
             if (size.floatValue < 0.0f) size.floatValue = 0.0f;
+            else if (size.floatValue > 10.0f) size.floatValue = 10.0f;
 
             if (separation.floatValue < 0.0f) separation.floatValue = 0.0f;
         }

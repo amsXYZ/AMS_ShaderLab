@@ -3,15 +3,25 @@
 	Properties
 	{
 		_MainTex ("Texture", 2D) = "white" {}
+		_FilmLut("Film LUT", 2D) = "white" {}
 	}
+
+	// The majority of the techniques applied in this shader are based on this post
+	// by John Hable : http://filmicgames.com/archives/75
+
+	////////////////////////
+	// Tonemapping Shader //
+	////////////////////////
 	SubShader
 	{
 		// No culling or depth
 		Cull Off ZWrite Off ZTest Always
 
-		//PHOTOGRAPHIC TONEMAPPING
+		// 0 : Photographic
 		Pass
 		{
+			Name "PHOTOGRAPHIC"	
+
 			CGPROGRAM
 			#pragma vertex vert_img
 			#pragma fragment frag
@@ -34,9 +44,11 @@
 			ENDCG
 		}
 
-		//REINHARD TONEMAPPING
+		// 1 : Reinhard
 		Pass
 		{
+			Name "REINHARD"
+
 			CGPROGRAM
 			#pragma vertex vert_img
 			#pragma fragment frag
@@ -60,9 +72,11 @@
 			ENDCG
 		}
 
-		//HPDUIKER TONEMAPPING
+		// 2 : H.P.Duiker
 		Pass
 		{
+			Name "HPDUIKER"
+
 			CGPROGRAM
 			#pragma vertex vert_img
 			#pragma fragment frag
@@ -73,7 +87,7 @@
 
 			uniform sampler2D _MainTex;
 			uniform float _Exposure;
-			uniform sampler2D FilmLut;
+			uniform sampler2D _FilmLut;
 
 			float4 frag(v2f_img i) : SV_Target
 			{
@@ -93,18 +107,20 @@
 				float Padding = .5 / FilmLutWidth;
 
 				float3 retColor;
-				retColor.r = tex2D(FilmLut, float2(lerp(Padding, 1 - Padding, LogColor.r), .5)).r;
-				retColor.g = tex2D(FilmLut, float2(lerp(Padding, 1 - Padding, LogColor.g), .5)).r;
-				retColor.b = tex2D(FilmLut, float2(lerp(Padding, 1 - Padding, LogColor.b), .5)).r;
+				retColor.r = tex2D(_FilmLut, float2(lerp(Padding, 1 - Padding, LogColor.r), .5)).r;
+				retColor.g = tex2D(_FilmLut, float2(lerp(Padding, 1 - Padding, LogColor.g), .5)).r;
+				retColor.b = tex2D(_FilmLut, float2(lerp(Padding, 1 - Padding, LogColor.b), .5)).r;
 
 				return float4(retColor, 1);
 			}
 			ENDCG
 		}
 
-		//HEJL_DAWSON TONEMAPPING
+		// 3 : Hejl-Dawson
 		Pass
 		{
+			Name "HEJL_DAWSON"
+
 			CGPROGRAM
 			#pragma vertex vert_img
 			#pragma fragment frag
@@ -127,8 +143,9 @@
 			ENDCG
 		}
 
-		//HABLE TONEMAPPING
+		// 4 : John Hable
 		Pass{
+			Name "HABLE"
 
 			CGPROGRAM
 			#pragma vertex vert_img
@@ -173,9 +190,12 @@
 			ENDCG
 		}
 
-		//ACES TONEMAPPING
+		// Based on: https://knarkowicz.wordpress.com/2016/01/06/aces-filmic-tone-mapping-curve/
+		// 5 : Academy Color Encoding System
 		Pass
 		{
+			Name "ACES"
+
 			CGPROGRAM
 			#pragma vertex vert_img
 			#pragma fragment frag

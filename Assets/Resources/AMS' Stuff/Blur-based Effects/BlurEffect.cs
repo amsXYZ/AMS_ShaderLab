@@ -20,9 +20,9 @@ namespace AMSPostprocessingEffects
         private Material _material;
         private Camera _camera;
 
-        //////////////////////////////////
-        // Unity Editor related functions.
-        //////////////////////////////////
+        ////////////////////////////////////
+        // Unity Editor related functions //
+        ////////////////////////////////////
 
         // Creates a private material used to the effect and get the camera component.
         void Awake()
@@ -42,9 +42,9 @@ namespace AMSPostprocessingEffects
             if (!_material) _material = new Material(Shader.Find("Hidden/Blur"));
         }
 
-        //////////////////////////////////////
-        // Post-processing effect application.
-        //////////////////////////////////////
+        ////////////////////////////////////////
+        // Post-processing effect application //
+        ////////////////////////////////////////
 
         // Called by the camera to apply the image effect
         void OnRenderImage(RenderTexture source, RenderTexture destination)
