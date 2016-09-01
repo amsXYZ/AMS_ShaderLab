@@ -34,7 +34,9 @@ public class LocalSmear : MonoBehaviour
 
             for (int i = 0; i < currentVertex.Length; i++)
             {
-                vertexDisplacement[i] = previousVertex[i] - (transform.position + (Vector3)(meshRenderer.localToWorldMatrix.MultiplyPoint(currentVertex[i])));
+                //Debug.DrawLine(previousVertex[i], meshRenderer.localToWorldMatrix.MultiplyPoint(currentVertex[i]), new Color(1,1,1,0.05f), 0.05f, true);
+
+                vertexDisplacement[i] = previousVertex[i] - meshRenderer.localToWorldMatrix.MultiplyPoint(currentVertex[i]);
                 accelerationColors[i] = Vector3.ClampMagnitude(accelerationColors[i] + vertexDisplacement[i] / 10, 1);
 
                 colors.Add(new Color(accelerationColors[i].x, accelerationColors[i].y, accelerationColors[i].z, 1));
@@ -58,6 +60,18 @@ public class LocalSmear : MonoBehaviour
         shader.SetVector("MV2", meshRenderer.localToWorldMatrix.GetRow(2));
         shader.SetVector("MV3", meshRenderer.localToWorldMatrix.GetRow(3));
 
+        shader.SetVector("Q0", new Vector3( 1 - Mathf.Pow(2*transform.rotation.y, 2) - Mathf.Pow(2 * transform.rotation.z, 2),
+                                            2*transform.rotation.x*transform.rotation.y - 2*transform.rotation.z*transform.rotation.w,
+                                            2 * transform.rotation.x * transform.rotation.z + 2 * transform.rotation.y * transform.rotation.w));
+
+        shader.SetVector("Q1", new Vector3( 2 * transform.rotation.x * transform.rotation.y + 2 * transform.rotation.z * transform.rotation.w,
+                                            1 - Mathf.Pow(2 * transform.rotation.x, 2) - Mathf.Pow(2 * transform.rotation.z, 2),
+                                            2 * transform.rotation.y * transform.rotation.z - 2 * transform.rotation.x * transform.rotation.w));
+
+        shader.SetVector("Q1", new Vector3(2 * transform.rotation.x * transform.rotation.z - 2 * transform.rotation.y * transform.rotation.z,
+                                            2 * transform.rotation.y * transform.rotation.z + 2 * transform.rotation.x * transform.rotation.w,
+                                            1 - Mathf.Pow(2 * transform.rotation.x, 2) - Mathf.Pow(2 * transform.rotation.y, 2)));
+
         shader.Dispatch(kernel, previousFrameMesh.vertices.Length, 1, 1);
 
         Vector3[] data = new Vector3[previousFrameMesh.vertices.Length];
@@ -76,51 +90,4 @@ public class LocalSmear : MonoBehaviour
 
         prevPosition = transform.position;
     }
-
-    public void SewNormals()
-    {
-        if (!currentMesh)
-        {
-            currentMesh = new Mesh();
-            meshRenderer.BakeMesh(currentMesh);
-            currentMesh.UploadMeshData(false);
-        }
-
-        Vector3[] currentVertices = currentMesh.vertices;
-
-        Dictionary<Vector3, List<int>> verticesIndices = new Dictionary<Vector3, List<int>>();
-        for (int i = 0; i < currentVertices.Length; i++)
-        {
-            if (!verticesIndices.ContainsKey(currentVertices[i])) verticesIndices.Add(currentVertices[i], new List<int>());
-
-            verticesIndices[currentVertices[i]].Add(i);
-        }
-
-        Vector3[] newNormals = new Vector3[currentVertices.Length];
-        for (int i = 0; i < verticesIndices.Count; i++)
-        {
-            foreach (int index in verticesIndices[currentVertices[i]])
-            {
-                newNormals[index] += currentVertices[i];
-                newNormals[index] = Vector3.Normalize(newNormals[index]);
-            }
-        }
-
-        currentMesh.normals = newNormals;
-        currentMesh.UploadMeshData(false);
-    }
-
-    /*void OnDrawGizmos()
-    {
-        if (currentMesh)
-        {
-            Vector3[] normals = currentMesh.normals;
-            for (int i = 0; i < currentMesh.vertices.Length; i+=10)
-            {
-                Gizmos.color = new Color(Mathf.Max(Vector3.Dot(normals[i], -accelerationColors[i]), 0), Mathf.Max(Vector3.Dot(normals[i], -accelerationColors[i]), 0), Mathf.Max(Vector3.Dot(normals[i], -accelerationColors[i]), 0));
-                Gizmos.DrawLine(transform.position + Quaternion.LookRotation(transform.forward, transform.up) * currentMesh.vertices[i], transform.position + Quaternion.LookRotation(transform.forward, transform.up) * currentMesh.vertices[i] + accelerationColors[i]);
-                Gizmos.DrawLine(transform.position + Quaternion.LookRotation(transform.forward, transform.up) * currentMesh.vertices[i], transform.position + Quaternion.LookRotation(transform.forward, transform.up) * currentMesh.vertices[i] + Vector3.Normalize(normals[i]) / 10);
-            }
-        }
-    }*/
 }

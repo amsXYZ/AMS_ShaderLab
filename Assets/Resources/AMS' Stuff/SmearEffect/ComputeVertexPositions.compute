@@ -7,12 +7,16 @@ float4 MV1;
 float4 MV2;
 float4 MV3;
 
+float3 Q0;
+float3 Q1;
+float3 Q2;
+
 [numthreads(1,1,1)]
 void CSMain (uint3 dispatchID : SV_DispatchThreadID)
 {
 	int id = dispatchID.x + dispatchID.y;
 	float4x4 modelViewMatrix = {MV0,MV1,MV2,MV3};
+	float3x3 rotMat = { Q0,Q1,Q2 };
 
-	vertexPositions[id] = Position + mul(modelViewMatrix, float4(vertexPositions[id],1));
-
+	vertexPositions[id] = mul(modelViewMatrix, float4(vertexPositions[id],1));
 }

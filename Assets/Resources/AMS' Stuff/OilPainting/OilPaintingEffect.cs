@@ -1,45 +1,56 @@
 ﻿using UnityEngine;
 
-namespace UnityStandardAssets.ImageEffects
+namespace AMSPostprocessingEffects
 {
     [ExecuteInEditMode]
+#if UNITY_5_4_OR_NEWER
+    [ImageEffectAllowedInSceneView]
+#endif
     [RequireComponent(typeof(Camera))]
     public class OilPaintingEffect : MonoBehaviour
     {
-        [Range(0,5)]
-        public int samplingRadius = 3;
-
-        [Range(1,4)]
+        [Range(1,5), Tooltip("Width of the sampling kernel.")]
+        public int samplingKernelWidth = 3;
+        [Range(1,4), Tooltip("Width (in pixels) of the sampling kernel.")]
         public float samplingDistance = 1;
+        [Range(10,30), Tooltip("Number of posterized colors we'll use.")]
+        public int colors = 10;
 
-        [Range(10,30)]
-        public int intensity = 1;
+        private Material _material;
 
-        public Texture2D noiseTexture;
+        ////////////////////////////////////
+        // Unity Editor related functions //
+        ////////////////////////////////////
 
-        [Range(0, 0.01f)]
-        public float noiseStrength;
-
-        private Material material;
-
-        //Creates a private material used to the effect
+        // Creates a private material used to the effect.
         void Awake()
         {
-            material = new Material(Shader.Find("Hidden/OilPainting"));
+            _material = new Material(Shader.Find("Hidden/OilPainting"));
         }
 
-        // Called by the camera to apply the image effect
+        // Methods used to take care of the materials when enabling/disabling the effects in the inspector.
+        void OnDisable()
+        {
+            if (_material) DestroyImmediate(_material);
+            _material = null;
+        }
+        void OnEnable()
+        {
+            if (!_material) _material = new Material(Shader.Find("Hidden/OilPainting"));
+        }
+
+        ////////////////////////////////////////
+        // Post-processing effect application //
+        ////////////////////////////////////////
+
+        // Postprocess the image
         void OnRenderImage(RenderTexture source, RenderTexture destination)
         {
-            material = new Material(Shader.Find("Hidden/OilPainting"));
+            _material.SetInt("_SamplingKernelWidth", samplingKernelWidth);
+            _material.SetFloat("_Distance", samplingDistance);
+            _material.SetInt("_ColorIntensities", colors);
 
-            material.SetInt("_Radius", samplingRadius);
-            material.SetFloat("_Distance", samplingDistance);
-            material.SetInt("_Intensity", intensity);
-            material.SetTexture("_NoiseTex", noiseTexture);
-            material.SetFloat("_NoiseStrength", noiseStrength);
-
-            Graphics.Blit(source, destination, material, 0);
+            Graphics.Blit(source, destination, _material);
             return;
         }
     }

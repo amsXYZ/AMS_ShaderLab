@@ -91,10 +91,10 @@
 				float centerDepth, sample0Depth, sample1Depth, sample2Depth, sample3Depth;
 
 				SampleDepthNormal(sampleCenterUV, centerNormal, centerDepth);
-				SampleDepthNormal(sampleCenterUV + float2(-1, -1) * _MainTex_TexelSize.xy, sample0Normal, sample0Depth);
-				SampleDepthNormal(sampleCenterUV + float2(+1, -1) * _MainTex_TexelSize.xy, sample1Normal, sample1Depth);
-				SampleDepthNormal(sampleCenterUV + float2(-1, +1) * _MainTex_TexelSize.xy, sample2Normal, sample2Depth);
-				SampleDepthNormal(sampleCenterUV + float2(+1, +1) * _MainTex_TexelSize.xy, sample3Normal, sample3Depth);
+				SampleDepthNormal(clamp(sampleCenterUV + float2(-1, -1) * _MainTex_TexelSize.xy, 0, 1), sample0Normal, sample0Depth);
+				SampleDepthNormal(clamp(sampleCenterUV + float2(-1, +1) * _MainTex_TexelSize.xy, 0, 1), sample1Normal, sample1Depth);
+				SampleDepthNormal(clamp(sampleCenterUV + float2(+1, -1) * _MainTex_TexelSize.xy, 0, 1), sample2Normal, sample2Depth);
+				SampleDepthNormal(clamp(sampleCenterUV + float2(+1, +1) * _MainTex_TexelSize.xy, 0, 1), sample3Normal, sample3Depth);
 
 				// Check if the center pixel is an edge.
 				half edge = 1.0;

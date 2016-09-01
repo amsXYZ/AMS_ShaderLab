@@ -17,14 +17,15 @@ namespace AMSPostprocessingEffects
         public float focalSize = 0.05f;
         [Range(0, 1)]
         public float aperture = 0.5f;
-        //[Range(0.1f, 2)]
-        //public float maxBlurSize = 0.5f;
+        [Range(0, 3)]
+        public float maxBlurDistance = 1f;
 
         public bool Debug;
 
         private float internalBlurWidth = 1.0f;
 
         private Material material;
+        private Material materialBlur;
         private Camera camera;
 
         //Creates a private material used to the effect
@@ -32,6 +33,7 @@ namespace AMSPostprocessingEffects
         {
             //material = new Material(Shader.Find("Hidden/Dof/DepthOfFieldHdr"));
             material = new Material(Shader.Find("Hidden/DOF"));
+            materialBlur = new Material(Shader.Find("Hidden/Blur"));
             camera = GetComponent<Camera>();
         }
 
@@ -74,24 +76,52 @@ namespace AMSPostprocessingEffects
 
             material.SetFloat("_FocalSize", focalSize);
 
-            int rtW = source.width;
-            int rtH = source.height;
-            RenderTexture buffer = RenderTexture.GetTemporary(rtW, rtH, 0, RenderTextureFormat.ARGBFloat, RenderTextureReadWrite.Linear);
+            material.SetFloat("_MaxBlurDistance", maxBlurDistance);
 
-            // Copy source to the 4x4 smaller texture.
-            DownSample4x(source, buffer);
+            float[] poissonDisks = {-0.6116678f,  0.04548655f, -0.26605980f, -0.6445347f,
+                                                -0.4798763f,  0.78557830f, -0.19723210f, -0.1348270f,
+                                                -0.7351842f, -0.58396650f, -0.35353550f,  0.3798947f,
+                                                0.1423388f,  0.39469180f, -0.01819171f,  0.8008046f,
+                                                0.3313283f, -0.04656135f,  0.58593510f,  0.4467109f,
+                                                0.8577477f,  0.11188750f,  0.03690137f, -0.9906120f,
+                                                0.4768903f, -0.84335800f,  0.13749180f, -0.4746810f,
+                                                0.7814927f, -0.48938420f,  0.38269190f,  0.8695006f };
 
-            // Blur the small texture
-            for (int i = 0; i < 5; i++)
-            {
-                RenderTexture buffer2 = RenderTexture.GetTemporary(rtW, rtH, 0, RenderTextureFormat.ARGBFloat, RenderTextureReadWrite.Linear);
-                FourTapCone(buffer, buffer2, i);
-                RenderTexture.ReleaseTemporary(buffer);
-                buffer = buffer2;
-            }
-            Graphics.Blit(buffer, destination);
+            material.SetFloatArray("_PoissonDisks", poissonDisks);
 
-            RenderTexture.ReleaseTemporary(buffer);
+            // Capture COC
+            // Create the downsampled textures (being careful with preserving the coc)
+            // Lerp between the 3D Texture using the coc
+
+            // Calculate the coc
+            RenderTexture FcocBuffer = RenderTexture.GetTemporary(source.width, source.height, 0, RenderTextureFormat.ARGBFloat, RenderTextureReadWrite.sRGB);
+            Graphics.Blit(source, FcocBuffer, material, 2);
+            RenderTexture FdownsampledBufffer = RenderTexture.GetTemporary(source.width/2, source.height/2, 0, RenderTextureFormat.ARGBFloat, RenderTextureReadWrite.sRGB);
+            Graphics.Blit(FcocBuffer, FdownsampledBufffer, material, 4);
+            RenderTexture FblurredBuffer = RenderTexture.GetTemporary(source.width / 2, source.height / 2, 0, RenderTextureFormat.ARGBFloat, RenderTextureReadWrite.sRGB);
+            Graphics.Blit(FdownsampledBufffer, FblurredBuffer, material, 5);
+
+            RenderTexture BcocBuffer = RenderTexture.GetTemporary(source.width, source.height, 0, RenderTextureFormat.ARGBFloat, RenderTextureReadWrite.sRGB);
+            Graphics.Blit(source, BcocBuffer, material, 1);
+            RenderTexture BdownsampledBufffer = RenderTexture.GetTemporary(source.width / 2, source.height / 2, 0, RenderTextureFormat.ARGBFloat, RenderTextureReadWrite.sRGB);
+            Graphics.Blit(BcocBuffer, BdownsampledBufffer, material, 4);
+            RenderTexture BblurredBuffer = RenderTexture.GetTemporary(source.width / 2, source.height / 2, 0, RenderTextureFormat.ARGBFloat, RenderTextureReadWrite.sRGB);
+            Graphics.Blit(BdownsampledBufffer, BblurredBuffer, material, 5);
+
+            RenderTexture cocBuffer = RenderTexture.GetTemporary(source.width, source.height, 0, RenderTextureFormat.ARGBFloat, RenderTextureReadWrite.sRGB);
+            Graphics.Blit(source, cocBuffer, material, 0);
+
+            material.SetTexture("_downsampledBlurredB", BblurredBuffer);
+            material.SetTexture("_downsampledBlurredF", FblurredBuffer);
+            Graphics.Blit(cocBuffer, destination, material, 3);
+
+            RenderTexture.ReleaseTemporary(FcocBuffer);
+            RenderTexture.ReleaseTemporary(FdownsampledBufffer);
+            RenderTexture.ReleaseTemporary(FblurredBuffer);
+            RenderTexture.ReleaseTemporary(BcocBuffer);
+            RenderTexture.ReleaseTemporary(BdownsampledBufffer);
+            RenderTexture.ReleaseTemporary(BblurredBuffer);
+            RenderTexture.ReleaseTemporary(cocBuffer);
         }
     }
 }

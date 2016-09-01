@@ -14,7 +14,7 @@
 		Pass
 		{
 			CGPROGRAM
-			#pragma vertex vert
+			#pragma vertex vert_img
 			#pragma fragment frag
 
 			#pragma target 5.0
@@ -23,7 +23,6 @@
 
 			uniform sampler2D _MainTex;
 			uniform float4 _MainTex_TexelSize;
-			uniform half4 _BlurOffsets;
 
 			uniform float _FocusDepth;
 			uniform float _FocalSize;
@@ -32,56 +31,216 @@
 
 			sampler2D_float _CameraDepthTexture;
 
-			struct v2f {
-				float4 pos : SV_POSITION;
-				half2 uv : TEXCOORD0;
-				half2 taps[4] : TEXCOORD1;
-			};
-
-			v2f vert(appdata_img i) {
-				v2f o;
-				o.pos = mul(UNITY_MATRIX_MVP, i.vertex);
-				o.uv = i.texcoord - _BlurOffsets.xy * _MainTex_TexelSize.xy;
-				o.taps[0] = o.uv + _MainTex_TexelSize * _BlurOffsets.xy;
-				o.taps[1] = o.uv - _MainTex_TexelSize * _BlurOffsets.xy;
-				o.taps[2] = o.uv + _MainTex_TexelSize * _BlurOffsets.xy * half2(1, -1);
-				o.taps[3] = o.uv - _MainTex_TexelSize * _BlurOffsets.xy * half2(1, -1);
-				return o;
-			}
-
-			float4 frag(v2f i) : COLOR
+			float4 frag(v2f_img i) : COLOR
 			{
 				float fragDepth = Linear01Depth(SAMPLE_DEPTH_TEXTURE(_CameraDepthTexture, i.uv));
-				float finalDepth = _Aperture * abs(fragDepth - _FocusDepth) / (fragDepth + 1e-5f);
-				finalDepth = clamp(max(0, finalDepth - _FocalSize),0,1);
+				float coc = _Aperture * abs(fragDepth - _FocusDepth) / (fragDepth + 1e-5f);
+				coc = clamp(max(0, coc - _FocalSize),0,1);
 
-				float2 uv0Offset = _MainTex_TexelSize * _BlurOffsets.xy * finalDepth;
-				float2 uv1Offset = -_MainTex_TexelSize * _BlurOffsets.xy * finalDepth;
-				float2 uv2Offset = _MainTex_TexelSize * _BlurOffsets.xy * half2(1, -1) * finalDepth;
-				float2 uv3Offset = -_MainTex_TexelSize * _BlurOffsets.xy * half2(1, -1) * finalDepth;
+				return float4(tex2D(_MainTex, i.uv).xyz,coc);
+			}
+			ENDCG
+		}
 
-				float depth0 = Linear01Depth(SAMPLE_DEPTH_TEXTURE(_CameraDepthTexture, i.uv + uv0Offset));
-				float depth1 = Linear01Depth(SAMPLE_DEPTH_TEXTURE(_CameraDepthTexture, i.uv + uv1Offset));
-				float depth2 = Linear01Depth(SAMPLE_DEPTH_TEXTURE(_CameraDepthTexture, i.uv + uv2Offset));
-				float depth3 = Linear01Depth(SAMPLE_DEPTH_TEXTURE(_CameraDepthTexture, i.uv + uv3Offset));
+		Pass
+		{
+			CGPROGRAM
+			#pragma vertex vert_img
+			#pragma fragment frag
 
-				float maxDist = (1 / (_Aperture + 1)) + _FocalSize;
+			#pragma target 5.0
 
-				float weight0 = 1 - min(1, pow(abs(depth0 - fragDepth),2) / pow(maxDist,2));
-				float weight1 = 1 - min(1, pow(abs(depth1 - fragDepth), 2) / pow(maxDist, 2));
-				float weight2 = 1 - min(1, pow(abs(depth2 - fragDepth), 2) / pow(maxDist, 2));
-				float weight3 = 1 - min(1, pow(abs(depth3 - fragDepth), 2) / pow(maxDist, 2));
+			#include "UnityCG.cginc"
 
-				float sumWeight = weight0 + weight1 + weight2 + weight3;
+			uniform sampler2D _MainTex;
+			uniform float4 _MainTex_TexelSize;
 
-				half4 color = tex2D(_MainTex, i.uv + uv0Offset);
-				color += tex2D(_MainTex, i.uv + uv1Offset);
-				color += tex2D(_MainTex, i.uv + uv2Offset);
-				color += tex2D(_MainTex, i.uv + uv3Offset);
+			uniform float _FocusDepth;
+			uniform float _FocalSize;
+			uniform float _Aperture;
+			uniform int _Debug;
 
-				if (_Debug == 1) return finalDepth;
-				//if (_Debug == 1) return maxDist;
-				return color / 4;
+			sampler2D_float _CameraDepthTexture;
+
+			float4 frag(v2f_img i) : COLOR
+			{
+				float fragDepth = Linear01Depth(SAMPLE_DEPTH_TEXTURE(_CameraDepthTexture, i.uv));
+				float coc = _Aperture * (fragDepth - _FocusDepth) / (fragDepth + 1e-5f);
+				coc = clamp(max(0, coc - _FocalSize),0,1);
+
+				return float4(tex2D(_MainTex, i.uv).xyz,coc);
+			}
+			ENDCG
+		}
+
+		// FrontCOC
+		Pass
+		{
+			CGPROGRAM
+			#pragma vertex vert_img
+			#pragma fragment frag
+
+			#pragma target 5.0
+
+			#include "UnityCG.cginc"
+
+			uniform sampler2D _MainTex;
+			uniform float4 _MainTex_TexelSize;
+
+			uniform float _FocusDepth;
+			uniform float _FocalSize;
+			uniform float _Aperture;
+			uniform int _Debug;
+
+			sampler2D_float _CameraDepthTexture;
+
+			float4 frag(v2f_img i) : COLOR
+			{
+				float fragDepth = Linear01Depth(SAMPLE_DEPTH_TEXTURE(_CameraDepthTexture, i.uv));
+				float coc = -_Aperture * (fragDepth - _FocusDepth) / (fragDepth + 1e-5f);
+				coc = clamp(max(0, coc - _FocalSize),0,1);
+
+				return float4(tex2D(_MainTex, i.uv).xyz,coc);
+			}
+			ENDCG
+		}
+
+		// Upsample
+		Pass
+		{
+			CGPROGRAM
+			#pragma vertex vert_img
+			#pragma fragment frag
+
+			#pragma target 5.0
+
+			#include "UnityCG.cginc"
+
+			#define SCATTER_OVERLAP_SMOOTH (-0.265)
+
+			uniform sampler2D _MainTex;
+			uniform float4 _MainTex_TexelSize;
+			uniform sampler2D _downsampledBlurredB;
+			uniform sampler2D _downsampledBlurredF;
+
+			uniform float _MaxBlurDistance;
+
+			float4 frag(v2f_img i) : COLOR
+			{
+				float4 centerTap = tex2D(_MainTex, i.uv.xy);
+
+				float4 bigBlurB = tex2D(_downsampledBlurredB, i.uv.xy);
+				float4 backBlurred = lerp(centerTap, bigBlurB, (bigBlurB.a + centerTap.a)/2);
+
+				//return (bigBlurB.a + centerTap.a) / 2;
+
+				float4 bigBlurF = tex2D(_downsampledBlurredF, i.uv.xy);
+				float4 frontBlurred = lerp(backBlurred, bigBlurF, bigBlurF.a);
+
+				return frontBlurred;
+
+				//return lerp(centerTap, bigBlur, (bigBlur.a + centerTap.a)/2);
+
+				float4 smallBlur = centerTap;
+				float4 poissonScale = _MainTex_TexelSize.xyxy * centerTap.a;//* MAX BLUR DISTANCE
+
+				float sampleCount = max(centerTap.a * 0.25, 0.1f); // <- weighing with 0.25 looks nicer for small high freq spec
+				//smallBlur *= sampleCount;
+
+				float4 sample0 = tex2D(_MainTex, i.uv.xy + float2(1, 1) * poissonScale);
+				float4 sample1 = tex2D(_MainTex, i.uv.xy + float2(1, -1) * poissonScale);
+				float4 sample2 = tex2D(_MainTex, i.uv.xy + float2(-1, 1) * poissonScale);
+				float4 sample3 = tex2D(_MainTex, i.uv.xy + float2(-1, -1) * poissonScale);
+
+				float4 weight0 = smoothstep(SCATTER_OVERLAP_SMOOTH, 0.0, sample0.a - centerTap.a * sqrt(2) * poissonScale);
+				float4 weight1 = smoothstep(SCATTER_OVERLAP_SMOOTH, 0.0, sample1.a - centerTap.a * sqrt(2) * poissonScale);
+				float4 weight2 = smoothstep(SCATTER_OVERLAP_SMOOTH, 0.0, sample2.a - centerTap.a * sqrt(2) * poissonScale);
+				float4 weight3 = smoothstep(SCATTER_OVERLAP_SMOOTH, 0.0, sample3.a - centerTap.a * sqrt(2) * poissonScale);
+
+				//smallBlur += sample0 * weight0 + sample1 * weight1 + sample2 * weight2 + sample3 * weight3;
+				sampleCount += weight0 + weight1 + weight2 + weight3;
+
+				//smallBlur /= (sampleCount + 1e-5f);
+				float blend = smoothstep(0.65, 0.85, centerTap.a);
+				//float4 finalColor = lerp(smallBlur, bigBlur, blend);
+
+				//return centerTap.a < 1e-2f ? centerTap : float4(finalColor.rgb,centerTap.a);
+			}
+			ENDCG
+		}
+
+		// 2 : Downsample
+		Pass
+		{
+			Name "BLUR"
+
+			CGPROGRAM
+			#pragma vertex vert_img
+			#pragma fragment frag
+
+			#pragma target 5.0
+
+			#include "UnityCG.cginc"
+
+			uniform sampler2D _MainTex;
+			uniform float4 _MainTex_TexelSize;
+
+			float4 frag(v2f_img i) : COLOR
+			{
+				float4 sample0 = tex2D(_MainTex, i.uv.xy + 0.75 * _MainTex_TexelSize.xy);
+				float4 sample1 = tex2D(_MainTex, i.uv.xy - 0.75 * _MainTex_TexelSize.xy);
+				float4 sample2 = tex2D(_MainTex, i.uv.xy + 0.75 * _MainTex_TexelSize.xy * float2(1,-1));
+				float4 sample3 = tex2D(_MainTex, i.uv.xy - 0.75 * _MainTex_TexelSize.xy * float2(1,-1));
+
+				float4 weights = saturate(10.0 * float4(sample0.a, sample1.a, sample2.a, sample3.a));
+				float sumWeights = dot(weights, 1);
+
+				float4 color = (sample0*weights.x + sample1*weights.y + sample2*weights.z + sample3*weights.w);
+
+				float4 outColor = tex2D(_MainTex, i.uv);
+				if (outColor.a * sumWeights * 8.0 > 1e-5f) outColor.rgb = color.rgb / sumWeights;
+
+				return outColor;
+			}
+			ENDCG
+		}
+
+		// 3 : Blur
+		Pass
+		{
+			Name "BLUR"
+
+			CGPROGRAM
+			#pragma vertex vert_img
+			#pragma fragment frag
+
+			#pragma target 5.0
+
+			#include "UnityCG.cginc"
+
+			uniform sampler2D _MainTex;
+			uniform float4 _MainTex_TexelSize;
+
+			uniform float _MaxBlurDistance;
+
+			uniform float _PoissonDisks[32];
+
+			float4 frag(v2f_img i) : COLOR
+			{
+				float4 color = tex2D(_MainTex, i.uv);
+				float weights = 1.0;
+
+				[unroll(16)]
+				for (float x = 0; x < 32; x += 2)
+				{
+					float2 sampleUV = i.uv + float2(_PoissonDisks[x], _PoissonDisks[x + 1]) * _MainTex_TexelSize.xy * _MaxBlurDistance;
+					float4 value = tex2D(_MainTex, sampleUV);
+					color += value * value.a;
+					weights += value.a;
+				}
+
+				color = color / weights;
+				return color;
 			}
 			ENDCG
 		}

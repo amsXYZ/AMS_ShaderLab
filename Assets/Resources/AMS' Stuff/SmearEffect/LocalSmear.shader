@@ -1,4 +1,8 @@
-﻿Shader "Custom/LocalSmear"
+﻿// Upgrade NOTE: replaced '_World2Object' with 'unity_WorldToObject'
+
+// Upgrade NOTE: replaced '_World2Object' with 'unity_WorldToObject'
+
+Shader "Custom/LocalSmear"
 {
 	Properties
 	{
@@ -14,6 +18,63 @@
 	{
 		Tags { "RenderType"="Opaque" }
 		LOD 100
+
+		// 0: ShadowCaster
+		Pass{
+			Name "ShadowCaster"
+			Tags{ "LightMode" = "ShadowCaster" }
+
+			ZWrite On ZTest LEqual
+			Cull Off
+
+			CGPROGRAM
+			#pragma target 5.0
+
+			#pragma multi_compile_shadowcaster
+
+			#pragma vertex vertShadowCaster
+			#pragma fragment fragShadowCaster
+
+			#include "UnityCG.cginc"
+
+			sampler2D	_MainTex;
+			float4		_MainTex_ST;
+
+			struct VertexInput
+			{
+				float4 vertex : POSITION;
+				float4 colorDisplacement : COLOR0;
+				float3 normal : NORMAL;
+				float2 uv0		: TEXCOORD0;
+			};
+
+			struct VertexOutputShadowCaster
+			{
+				V2F_SHADOW_CASTER_NOPOS
+				float2 tex : TEXCOORD1;
+			};
+
+			void vertShadowCaster (VertexInput v, out VertexOutputShadowCaster o, out float4 opos : SV_POSITION)
+			{
+				float dispNormalIntensity = max(0, dot(v.colorDisplacement.xyz, UnityObjectToWorldNormal(v.normal)));
+				float displacement = 10 * dispNormalIntensity;
+
+				v.vertex.xyz += float3(mul((float3x3)unity_WorldToObject, displacement * v.colorDisplacement.xyz));
+
+				TRANSFER_SHADOW_CASTER_NOPOS(o,opos)
+				o.tex = TRANSFORM_TEX(v.uv0, _MainTex);
+			}
+
+			//Simple shaodw caster who takes in to account the alpha depending on the rendering mode.
+			half4 fragShadowCaster (VertexOutputShadowCaster i) : SV_Target
+			{
+				half alpha = tex2D(_MainTex, i.tex).a;
+
+				SHADOW_CASTER_FRAGMENT(i)
+			}
+
+			ENDCG
+		}
 
 		Pass
 		{
@@ -49,6 +110,7 @@
 				float3 normal : NORMAL;
 				float2 uv : TEXCOORD3;
 				float4 noiseuv : TEXCOORD4;
+				float3 n : TEXCOORD5;
 
 				LIGHTING_COORDS(1, 2)
 			};
@@ -77,11 +139,13 @@
 				float dispNormalIntensity = max(0, dot(v.colorDisplacement.xyz, o.normal));
 				float displacement = _Intensity * lerp(1, tex2Dlod(_NoiseTex, o.noiseuv), _Noise) * dispNormalIntensity;
 
-				//v.pos.xyz += (displacement * float4(-v.colorDisplacement.x, -v.colorDisplacement.y, v.colorDisplacement.z, 1)).xyz;
-				v.pos.xyz += (displacement * float4(-v.colorDisplacement.y, -v.colorDisplacement.z, v.colorDisplacement.x, 1)).xyz;
+				v.pos.xyz += float3(mul((float3x3)unity_WorldToObject, displacement * v.colorDisplacement.xyz));
+
 				o.pos = mul(UNITY_MATRIX_MVP, v.pos);
 
-				o.noiseuv = v.colorDisplacement;
+				o.noiseuv = displacement * v.colorDisplacement;
+
+				o.n = v.normal;
 
 				TRANSFER_VERTEX_TO_FRAGMENT(o);
 				return o;

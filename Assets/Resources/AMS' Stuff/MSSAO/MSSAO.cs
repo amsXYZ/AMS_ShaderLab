@@ -1,9 +1,11 @@
 ﻿using UnityEngine;
-using UnityEngine.Rendering;
 
-namespace UnityStandardAssets.ImageEffects
+namespace AMSPostprocessingEffects
 {
     [ExecuteInEditMode]
+#if UNITY_5_4_OR_NEWER
+    [ImageEffectAllowedInSceneView]
+#endif
     [RequireComponent(typeof(Camera))]
     public class MSSAO : MonoBehaviour
     {
@@ -14,6 +16,7 @@ namespace UnityStandardAssets.ImageEffects
         [Range(0, 4)]
         public float intensity = 1;
         public float maxRadiusDistance = 2;
+        [Range(3,7)]
         public int maxKernelSize = 5;
 
         public bool debug = false;
@@ -42,7 +45,7 @@ namespace UnityStandardAssets.ImageEffects
                 RenderTexture bufferPos = RenderTexture.GetTemporary(rtW, rtH, 0, RenderTextureFormat.ARGBFloat, RenderTextureReadWrite.Linear);
 
                 if (!material) material = new Material(Shader.Find("Hidden/MSSAO"));
-
+                
                 Graphics.Blit(source, bufferNorm, material, 0);
                 normalTextures[i] = bufferNorm;
                 Graphics.Blit(source, bufferPos, material, 1);
@@ -62,8 +65,6 @@ namespace UnityStandardAssets.ImageEffects
 
                 if (!material) material = new Material(Shader.Find("Hidden/MSSAO"));
 
-                //material.SetTexture("_NormalPosTex", normalPosTextures[i]);
-                material.SetFloat("_FOV", GetComponent<Camera>().fieldOfView);
                 material.SetFloat("_maxDist", maxRadiusDistance);
                 material.SetFloat("_maxKernelSize", maxKernelSize);
                 float r = GetComponent<Camera>().pixelHeight * maxRadiusDistance / (2.0f * Mathf.Abs(Mathf.Tan(Mathf.Deg2Rad * GetComponent<Camera>().fieldOfView / 2.0f)));
@@ -124,7 +125,6 @@ namespace UnityStandardAssets.ImageEffects
             material.SetFloat("_Intensity", intensity);
 
             Graphics.Blit(source, destination, material, 5);
-
             return;
         }
     }

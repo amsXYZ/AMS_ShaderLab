@@ -24,9 +24,12 @@ public class HalftoneEffectEditor : Editor
 
         // Get the camera minimum side's size in pixels and clamp the frequency to a fifth of it (also avoiding negative values).
         Camera camera = ((HalftoneEffect)target).GetCamera();
-        float minScreenSide = Mathf.Min(camera.pixelWidth, camera.pixelHeight);
-        if (frequency.floatValue > minScreenSide / 4) frequency.floatValue = minScreenSide / 4;
-        else if (frequency.floatValue < 1) frequency.floatValue = 1;
+        if(camera)
+        {
+            float minScreenSide = Mathf.Min(camera.pixelWidth, camera.pixelHeight);
+            if (frequency.floatValue > minScreenSide / 4) frequency.floatValue = minScreenSide / 4;
+            else if (frequency.floatValue < 1) frequency.floatValue = 1;
+        }
 
         // Apply the changes.
         serializedObject.ApplyModifiedProperties();

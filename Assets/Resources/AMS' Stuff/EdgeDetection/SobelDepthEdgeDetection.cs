@@ -26,7 +26,7 @@ namespace AMSPostprocessingEffects
         // Unity Editor related functions //
         ////////////////////////////////////
 
-        //Creates a private material used to the effect.
+        // Creates a private material used to the effect.
         void Awake()
         {
             _material = new Material(Shader.Find("Hidden/SobelDepth"));
@@ -48,7 +48,7 @@ namespace AMSPostprocessingEffects
         // Post-processing effect application //
         ////////////////////////////////////////
 
-        //Postprocess the image
+        // Postprocess the image
         void OnRenderImage(RenderTexture source, RenderTexture destination)
         {
             _material.SetVector("_Sensitivity", new Vector2(sensitivityDepth, sensitivityNormals));
