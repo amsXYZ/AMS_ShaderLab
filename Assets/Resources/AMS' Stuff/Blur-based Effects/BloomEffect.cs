@@ -108,6 +108,8 @@ namespace AMSPostprocessingEffects
                                    new Vector2(offset, offset),
                                    new Vector2(offset, -offset));
 
+                RenderTexture.ReleaseTemporary(finalBloomBuffer);
+
                 finalBloomBuffer = temporaryBlurBuffer;
                 if (i == iterations - 1) RenderTexture.ReleaseTemporary(temporaryBlurBuffer);
             }

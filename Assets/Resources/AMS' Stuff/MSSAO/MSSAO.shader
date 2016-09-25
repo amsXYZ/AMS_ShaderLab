@@ -5,14 +5,20 @@
 		_MainTex("Base (RGB)", 2D) = "white" {}
 	}
 
+	////////////////////////////////////////////////////////
+	// Multi-scale Screen Space Ambient Occlusion (MSSAO) //
+	////////////////////////////////////////////////////////
+
 	SubShader
 	{
 		// No culling or depth
 		Cull Off ZWrite Off ZTest Always
 
-		//DOWNSAMPLING NORMAL
+		// 0 : Normal texture computation
 		Pass
 		{	
+			Name "NORMAL"
+
 			CGPROGRAM
 
 			#pragma vertex vert_img
@@ -26,9 +32,11 @@
 			ENDCG
 		}
 
-		//DOWNSAMPLING POS
+		// 1 : World position texture computation
 		Pass
 		{	
+			Name "POS"
+
 			CGPROGRAM
 
 			#pragma vertex vert_img
@@ -42,10 +50,10 @@
 			ENDCG
 		}
 
-		//COMPUTE AO - FIRST PASS
+		// 2 : AO - First Pass
 		Pass
 		{
-			//Blend One One
+			Name "AOFIRST"
 
 			CGPROGRAM
 
@@ -60,10 +68,10 @@
 			ENDCG
 		}
 
-		//COMPUTE AO - INTERMEDIUM PASSES
+		// 3 : AO - Intermedium passes
 		Pass
 		{
-			//Blend One One
+			Name "AO"
 
 			CGPROGRAM
 
@@ -78,10 +86,10 @@
 			ENDCG
 		}
 
-		//COMPUTE AO - LAST PASS
+		// 4 : AO - Last passes
 		Pass
 		{
-			//Blend One One
+			Name "AOLAST"
 
 			CGPROGRAM
 
@@ -96,10 +104,10 @@
 			ENDCG
 		}
 
-		//COMPOSITING
+		// 5 : Final composition
 		Pass
 		{
-			//Blend One One
+			Name "FINAL"
 
 			CGPROGRAM
 
@@ -111,6 +119,7 @@
 			#include "UnityCG.cginc"
 
 			uniform sampler2D _MainTex;
+			uniform float4 _MainTex_TexelSize;
 			uniform sampler2D _AOFinal;
 
 			uniform int _singleAO;
@@ -119,14 +128,20 @@
 
 			float4 frag(v2f_img i) : COLOR
 			{
-				float4 ao;
-				if (_singleAO) {
-					ao = 1 - tex2D(_AOFinal, i.uv).x;
-				}
-				else ao = tex2D(_AOFinal, i.uv).x;
-
 				float4 color = tex2D(_MainTex, i.uv);
 				if (_Debug) color = float4(1, 1, 1, 1);
+
+				half2 aoUV = i.uv;
+				// Flip the original texture's UV if they are flipped (it can happen sometimes).
+				#if UNITY_UV_STARTS_AT_TOP
+					if (_MainTex_TexelSize.y < 0.0) aoUV.y = 1.0 - aoUV.y;
+				#endif
+
+				float4 ao;
+				if (_singleAO) {
+					ao = 1 - tex2D(_AOFinal, aoUV).x;
+				}
+				else ao = tex2D(_AOFinal, aoUV).x;
 				
 				return color * pow(ao, _Intensity);
 			}

@@ -14,6 +14,8 @@ namespace AMSPostprocessingEffects
         public float sensitivityDepth = 1.0f;
         [Tooltip("Adjust the importance of the normals in the edge calculation.")]
         public float sensitivityNormals = 1.0f;
+        [Range(0,4), Tooltip("Adjust the width of the calculated edge.")]
+        public int edgeWidth = 1;
 
         [Header("Other")]
         public Color outlineColor = Color.black;
@@ -52,6 +54,7 @@ namespace AMSPostprocessingEffects
         void OnRenderImage(RenderTexture source, RenderTexture destination)
         {
             _material.SetVector("_Sensitivity", new Vector2(sensitivityDepth, sensitivityNormals));
+            _material.SetFloat("_EdgeWidth", edgeWidth * 0.5f);
             _material.SetColor("_EdgeColor", outlineColor);
             _material.SetInt("_Debug", debug ? 1 : 0);
             Graphics.Blit(source, destination, _material);

@@ -1,8 +1,4 @@
-﻿// Upgrade NOTE: replaced '_World2Object' with 'unity_WorldToObject'
-
-// Upgrade NOTE: replaced '_World2Object' with 'unity_WorldToObject'
-
-Shader "Custom/LocalSmear"
+﻿Shader "Custom/LocalSmear"
 {
 	Properties
 	{
@@ -12,7 +8,6 @@ Shader "Custom/LocalSmear"
 		_Intensity ("Smear intensity", Range(0,10)) = 1
 		_NoiseTexture ("Noise Texture", 2D) = "white" {}
 		[MaterialToggle] _Noise("Noise?", Float) = 0
-		[MaterialToggle] _Debug("Debug", Float) = 0
 	}
 	SubShader
 	{
@@ -110,7 +105,6 @@ Shader "Custom/LocalSmear"
 				float3 normal : NORMAL;
 				float2 uv : TEXCOORD3;
 				float4 noiseuv : TEXCOORD4;
-				float3 n : TEXCOORD5;
 
 				LIGHTING_COORDS(1, 2)
 			};
@@ -125,7 +119,6 @@ Shader "Custom/LocalSmear"
 			float _Levels;
 			float _Intensity;
 			float _Noise;
-			float _Debug;
 			
 			v2f vert (appdata v)
 			{
@@ -143,25 +136,20 @@ Shader "Custom/LocalSmear"
 
 				o.pos = mul(UNITY_MATRIX_MVP, v.pos);
 
-				o.noiseuv = displacement * v.colorDisplacement;
-
-				o.n = v.normal;
-
 				TRANSFER_VERTEX_TO_FRAGMENT(o);
 				return o;
 			}
 			
 			float4 frag (v2f i) : SV_Target
 			{
-				//return i.noiseuv;
-
 				float attenuation = LIGHT_ATTENUATION(i);
 				float ndotl = max(0, dot(i.normal, _WorldSpaceLightPos0) * attenuation);
 
-				float4 color = lerp(_ShadowColor * tex2D(_MainTex, i.uv), tex2D(_MainTex, i.uv), floor(ndotl * _Levels) / _Levels);
+				float4 color = lerp(_ShadowColor, float4(1,1,1,1), floor(ndotl * _Levels) / _Levels);
+				color *= tex2D(_MainTex, i.uv);
 				color.w = 1;
 
-				return lerp(color, i.noiseuv, _Debug);
+				return color;
 			}
 			ENDCG
 		}

@@ -1,5 +1,4 @@
 ﻿using UnityEngine;
-using System.Collections;
 using System.Collections.Generic;
 
 public class LocalSmear : MonoBehaviour
@@ -8,86 +7,80 @@ public class LocalSmear : MonoBehaviour
     public float smearDecceleration;
     public ComputeShader shader;
 
-    private Mesh previousFrameMesh;
-    private Mesh currentMesh;
-    private Vector3[] accelerationColors;
-    private Vector3 prevPosition;
-    private SkinnedMeshRenderer meshRenderer;
+    private Mesh _previousFrameMesh;
+    private Mesh _currentMesh;
+    private Vector3[] _accelerationColors;
+    private SkinnedMeshRenderer _meshRenderer;
 
     void LateUpdate()
     {
-        if (!currentMesh) currentMesh = new Mesh();
+        if (!_currentMesh) _currentMesh = new Mesh();
 
-        if (!meshRenderer) meshRenderer = GetComponent<SkinnedMeshRenderer>();
+        if (!_meshRenderer) _meshRenderer = GetComponent<SkinnedMeshRenderer>();
 
-        if (previousFrameMesh)
+        if (_previousFrameMesh)
         {
-            meshRenderer.BakeMesh(currentMesh);
-            currentMesh.UploadMeshData(false);
-            Vector3[] currentVertex = currentMesh.vertices;
-            Vector3[] currentNormals = currentMesh.normals;
-            Vector3[] previousVertex = previousFrameMesh.vertices;
-            if (accelerationColors == null) accelerationColors = new Vector3[currentMesh.vertices.Length];
+            // Bake the current vertex data into an array and load the previous vertex data into another one.
+            _meshRenderer.BakeMesh(_currentMesh);
+            _currentMesh.UploadMeshData(false);
+            Vector3[] currentVertices = _currentMesh.vertices;
+            Vector3[] previousVertices = _previousFrameMesh.vertices;
 
-            Vector3[] vertexDisplacement = new Vector3[currentVertex.Length];
+            // If there's acceleration information, create a new array to store it.
+            if (_accelerationColors == null) _accelerationColors = new Vector3[_currentMesh.vertices.Length];
+
+            Vector3[] vertexDisplacement = new Vector3[currentVertices.Length];
             List<Color> colors = new List<Color>();
 
-            for (int i = 0; i < currentVertex.Length; i++)
+            for (int i = 0; i < currentVertices.Length; i++)
             {
-                //Debug.DrawLine(previousVertex[i], meshRenderer.localToWorldMatrix.MultiplyPoint(currentVertex[i]), new Color(1,1,1,0.05f), 0.05f, true);
+                // Calculate how much has that vertex has being displaced in the last frame.
+                vertexDisplacement[i] = previousVertices[i] - _meshRenderer.localToWorldMatrix.MultiplyPoint(currentVertices[i]);
 
-                vertexDisplacement[i] = previousVertex[i] - meshRenderer.localToWorldMatrix.MultiplyPoint(currentVertex[i]);
-                accelerationColors[i] = Vector3.ClampMagnitude(accelerationColors[i] + vertexDisplacement[i] / 10, 1);
-
-                colors.Add(new Color(accelerationColors[i].x, accelerationColors[i].y, accelerationColors[i].z, 1));
+                // Add that movement to the acceleration colors (and clamp it).
+                _accelerationColors[i] = Vector3.ClampMagnitude(_accelerationColors[i] + vertexDisplacement[i] / 10, 1);
+                colors.Add(new Color(_accelerationColors[i].x, _accelerationColors[i].y, _accelerationColors[i].z, 1));
             }
 
-            meshRenderer.sharedMesh.SetColors(colors);
-            meshRenderer.sharedMesh.UploadMeshData(false);
+            // Pass the acceleration information as input for the vertex colors.
+            _meshRenderer.sharedMesh.SetColors(colors);
+            _meshRenderer.sharedMesh.UploadMeshData(false);
         }
 
-        if (!previousFrameMesh) previousFrameMesh = new Mesh();
-        meshRenderer.BakeMesh(previousFrameMesh);
+        // Bake the current mesh to be used in next frames.
+        if (!_previousFrameMesh) _previousFrameMesh = new Mesh();
+        _meshRenderer.BakeMesh(_previousFrameMesh);
 
-        ComputeBuffer buffer = new ComputeBuffer(previousFrameMesh.vertices.Length, 3 * sizeof(float));
-        buffer.SetData(previousFrameMesh.vertices);
+        // Setup the RWBuffer we're gonna use to effiicently apply the current transformation matrix to all the vertices.
+        ComputeBuffer buffer = new ComputeBuffer(_previousFrameMesh.vertices.Length, 3 * sizeof(float));
+        buffer.SetData(_previousFrameMesh.vertices);
+
+        // Setup the variables that the command buffer will use.
         int kernel = shader.FindKernel("CSMain");
         shader.SetBuffer(kernel, "vertexPositions", buffer);
-
         shader.SetVector("Position", transform.position);
-        shader.SetVector("MV0", meshRenderer.localToWorldMatrix.GetRow(0));
-        shader.SetVector("MV1", meshRenderer.localToWorldMatrix.GetRow(1));
-        shader.SetVector("MV2", meshRenderer.localToWorldMatrix.GetRow(2));
-        shader.SetVector("MV3", meshRenderer.localToWorldMatrix.GetRow(3));
+        shader.SetVector("MV0", _meshRenderer.localToWorldMatrix.GetRow(0));
+        shader.SetVector("MV1", _meshRenderer.localToWorldMatrix.GetRow(1));
+        shader.SetVector("MV2", _meshRenderer.localToWorldMatrix.GetRow(2));
+        shader.SetVector("MV3", _meshRenderer.localToWorldMatrix.GetRow(3));
 
-        shader.SetVector("Q0", new Vector3( 1 - Mathf.Pow(2*transform.rotation.y, 2) - Mathf.Pow(2 * transform.rotation.z, 2),
-                                            2*transform.rotation.x*transform.rotation.y - 2*transform.rotation.z*transform.rotation.w,
-                                            2 * transform.rotation.x * transform.rotation.z + 2 * transform.rotation.y * transform.rotation.w));
+        // Dispatch it.
+        shader.Dispatch(kernel, _previousFrameMesh.vertices.Length, 1, 1);
 
-        shader.SetVector("Q1", new Vector3( 2 * transform.rotation.x * transform.rotation.y + 2 * transform.rotation.z * transform.rotation.w,
-                                            1 - Mathf.Pow(2 * transform.rotation.x, 2) - Mathf.Pow(2 * transform.rotation.z, 2),
-                                            2 * transform.rotation.y * transform.rotation.z - 2 * transform.rotation.x * transform.rotation.w));
-
-        shader.SetVector("Q1", new Vector3(2 * transform.rotation.x * transform.rotation.z - 2 * transform.rotation.y * transform.rotation.z,
-                                            2 * transform.rotation.y * transform.rotation.z + 2 * transform.rotation.x * transform.rotation.w,
-                                            1 - Mathf.Pow(2 * transform.rotation.x, 2) - Mathf.Pow(2 * transform.rotation.y, 2)));
-
-        shader.Dispatch(kernel, previousFrameMesh.vertices.Length, 1, 1);
-
-        Vector3[] data = new Vector3[previousFrameMesh.vertices.Length];
+        // Retrieve the data and upload the previous mesh.
+        Vector3[] data = new Vector3[_previousFrameMesh.vertices.Length];
         buffer.GetData(data);
         buffer.Release();
-        previousFrameMesh.vertices = data;
-        previousFrameMesh.UploadMeshData(false);
+        _previousFrameMesh.vertices = data;
+        _previousFrameMesh.UploadMeshData(false);
 
-        if (accelerationColors != null)
+        // Decrease the strength of the acceleration colors overtime.
+        if (_accelerationColors != null)
         {
-            for (int i = 0; i < accelerationColors.Length; i++)
+            for (int i = 0; i < _accelerationColors.Length; i++)
             {
-                accelerationColors[i] = Vector3.Lerp(accelerationColors[i], Vector3.zero, Time.deltaTime * smearDecceleration * accelerationColors[i].magnitude);
+                _accelerationColors[i] = Vector3.Lerp(_accelerationColors[i], Vector3.zero, Time.deltaTime * smearDecceleration * _accelerationColors[i].magnitude);
             }
         }
-
-        prevPosition = transform.position;
     }
 }

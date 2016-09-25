@@ -63,7 +63,7 @@ namespace AMSPostprocessingEffects
             else rtFormat = RenderTextureFormat.Default;
 
             //Downsample the camera's RenderTexture and store it in a smaller new one.
-            RenderTexture finalBlurBuffer = RenderTexture.GetTemporary(rtW, rtH, 0, rtFormat, RenderTextureReadWrite.Linear);
+            RenderTexture finalBlurBuffer = RenderTexture.GetTemporary(rtW, rtH, 0, rtFormat, RenderTextureReadWrite.sRGB);
             Graphics.BlitMultiTap(source, finalBlurBuffer, _material,
                                    new Vector2(-1, -1),
                                    new Vector2(-1, 1),
@@ -73,7 +73,7 @@ namespace AMSPostprocessingEffects
             //Blur the downsampled texture.
             for (int i = 0; i < iterations; i++)
             {
-                RenderTexture temporaryBlurBuffer = RenderTexture.GetTemporary(rtW, rtH, 0, rtFormat, RenderTextureReadWrite.Linear);
+                RenderTexture temporaryBlurBuffer = RenderTexture.GetTemporary(rtW, rtH, 0, rtFormat, RenderTextureReadWrite.sRGB);
 
                 //Calculate the spread of the blur samples.
                 float offset = i * blurSpread;
@@ -82,6 +82,8 @@ namespace AMSPostprocessingEffects
                                    new Vector2(-offset, offset),
                                    new Vector2(offset, offset),
                                    new Vector2(offset, -offset));
+
+                RenderTexture.ReleaseTemporary(finalBlurBuffer);
 
                 finalBlurBuffer = temporaryBlurBuffer;
                 if (i == iterations - 1) RenderTexture.ReleaseTemporary(temporaryBlurBuffer);

@@ -52,12 +52,11 @@ namespace AMSPostprocessingEffects
         // Post-processing effect application //
         ////////////////////////////////////////
 
-        //Postprocess the image
+        // Postprocess the image
         void OnRenderImage(RenderTexture source, RenderTexture destination)
         {
             _material.SetTexture("_paper", (printingPaper) ? printingPaper : Texture2D.whiteTexture);
             _material.SetFloat("_frequency", frequency);
-            _material.SetVector("_uDims", new Vector4(Screen.width, Screen.height, 1.0f / Screen.width, 1.0f / Screen.height));
             _material.SetInt("_BW", BW ? 1 : 0);
             Graphics.Blit(source, destination, _material);
         }

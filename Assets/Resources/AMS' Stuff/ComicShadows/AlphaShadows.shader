@@ -7,7 +7,6 @@ Shader "Custom/AlphaShadows"
 		_MainTex("Albedo Map", 2D) = "white" {}
 		_Cutoff("Alpha Cutoff", Range(0,1)) = 0.1
 		_NormalMap("Normal Map", 2D) = "bump" {}
-		_NormalIntensity("Normal Intensity", Range(0,10)) = 1
 		_EmissionMap("Emission Map", 2D) = "black" {}
 		_EmissionColor("Emission Color", Color) = (1,1,1,1)
 		_EmissionIntensity("Emission Intensity", Float) = 1
@@ -109,7 +108,6 @@ Shader "Custom/AlphaShadows"
 			uniform float4 _MainTex_ST;
 			uniform fixed _Cutoff;
 			uniform sampler2D _NormalMap;
-			uniform float _NormalIntensity;
 			uniform sampler2D _EmissionMap;
 			uniform float4 _EmissionColor;
 			uniform float _Hue;
