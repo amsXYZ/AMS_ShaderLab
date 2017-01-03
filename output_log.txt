@@ -1,2 +1,0 @@
-There should be 'Demo_Data'
-folder next to the executable
