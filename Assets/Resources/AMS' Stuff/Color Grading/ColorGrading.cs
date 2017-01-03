@@ -81,6 +81,11 @@ namespace AMSPostprocessingEffects
                 _internalLUT3D = LUT2DTo3D(_internalLUT2D);
         }
 
+        public void SetChanges()
+        {
+            OnValidate();
+        }
+
         // Reset the internal LUTs.
         void Reset()
         {

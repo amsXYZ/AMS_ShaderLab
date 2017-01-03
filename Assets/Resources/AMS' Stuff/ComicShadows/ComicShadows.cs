@@ -73,6 +73,8 @@ namespace AMSPostprocessingEffects
         // Called by the camera to apply the image effect
         void OnRenderImage(RenderTexture source, RenderTexture destination)
         {
+            SetupMaterial();
+
             _material.SetFloat("_angle", angle);
             _material.SetFloat("_frequency", frequency);
             _material.SetFloat("_size", size);

@@ -23,6 +23,8 @@ namespace AMSPostprocessingEffects
         [Range(0.0f, 1.0f), Tooltip("How much will be the blur samples spread.")]
         public float blurSpread = 0.6f;
 
+        public bool debug;
+
         private Material _materialBlur;
         private Material _materialBloom;
         private Camera _camera;
@@ -94,6 +96,13 @@ namespace AMSPostprocessingEffects
             //Substract the threshold value to the sample texture's pixels.
             _materialBloom.SetFloat("_BloomThreshold", threshold);
             Graphics.Blit(source, finalBloomBuffer, _materialBloom,0);
+
+            if(debug)
+            {
+                Graphics.Blit(finalBloomBuffer, destination);
+                RenderTexture.ReleaseTemporary(finalBloomBuffer);
+                return;
+            }
 
             //Blur the downsampled texture.
             for (int i = 0; i < iterations; i++)
