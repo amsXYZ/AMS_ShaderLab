@@ -24,5 +24,6 @@ I also used some assets from Unity´s Asset Store for better display of the tech
 All the source code for the techniques implemented (from scripts and editor scripts to shaders) is located under the path: **[Assets/Resources/Research](https://github.com/amsgames94/AMS_ShaderLab/tree/master/Assets/Resources/Research)**
 
 Download Link: **[Demo](http://www.amsgames.co/FinalDegreeProject/FinalDegreeProjectDemoWIN64.zip)**
+(Change between scenes with the left/right arrow keys)
 
 ![Preview](http://www.amsgames.co/FinalDegreeProject/RepoPreview.png)
