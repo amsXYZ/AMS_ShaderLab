@@ -1,6 +1,6 @@
 # AMS_ShaderLab
 Unity3D project in which I implemented and tested all the techniques I studied during the development of my bachelor´s thesis: 
-**[Implementation of different post-processing effects and NPR techniques using Unity3D] (http://www.amsgames.co/FinalDegreeProject/FinalDegreeProjectReport-Andr%C3%A9sValencia.pdf)**
+**[Implementation of different post-processing effects and NPR techniques using Unity3D](https://ams.xyz/dev/FinalDegreeProjectReport-AndrésValencia.pdf)**
 
 Techniques implemented:
 - Halftone post-processing effect
@@ -16,14 +16,9 @@ Techniques implemented:
 - Multi-resolution Screen Space Ambient Occlusion
 
 I also used some assets from Unity´s Asset Store for better display of the techniques previously mentioned:
-- [Shader Calibration Scene] (https://www.assetstore.unity3d.com/en/#!/content/25422)
-- [Corridor Lighting Example] (https://www.assetstore.unity3d.com/en/#!/content/33630)
-- [¨Unity-chan!¨ Model] (https://www.assetstore.unity3d.com/en/#!/content/18705)
-- [Shader Forge] (https://www.assetstore.unity3d.com/en/#!/content/14147)
+- [Shader Calibration Scene](https://www.assetstore.unity3d.com/en/#!/content/25422)
+- [Corridor Lighting Example](https://www.assetstore.unity3d.com/en/#!/content/33630)
+- [¨Unity-chan!¨ Model](https://www.assetstore.unity3d.com/en/#!/content/18705)
+- [Shader Forge](https://www.assetstore.unity3d.com/en/#!/content/14147)
 
 All the source code for the techniques implemented (from scripts and editor scripts to shaders) is located under the path: **[Assets/Resources/Research](https://github.com/amsgames94/AMS_ShaderLab/tree/master/Assets/Resources/Research)**
-
-Download Link: **[Demo](http://www.amsgames.co/FinalDegreeProject/FinalDegreeProjectDemoWIN64.zip)**
-(Change between scenes with the left/right arrow keys)
-
-![Preview](http://www.amsgames.co/FinalDegreeProject/RepoPreview.png)
